@@ -1,0 +1,143 @@
+{
+  "StorageUploadWithoutLengthCheck": {
+    "usages": [
+      "upload",
+      "uploadWithResponse"
+    ],
+    "scope": "com.azure.storage.",
+    "antiPatternMessage": "Azure Storage upload API without length parameter detected. Use upload API with length parameter instead."
+  },
+  "DisableAutoCompleteCheck": {
+    "usages": "disableAutoComplete",
+    "scope": [
+      "ServiceBusReceiverClient",
+      "ServiceBusReceiverAsyncClient",
+      "ServiceBusProcessorClient"
+    ],
+    "antiPatternMessage": "Auto-complete enabled by default. Use the disableAutoComplete() API call to prevent automatic message completion."
+  },
+  "DynamicClientCreationCheck": {
+    "usages": [
+      "buildClient",
+      "buildAsyncClient"
+    ],
+    "antiPatternMessage": "Dynamic client creation detected. Create a single client instance and reuse it instead."
+  },
+  "HardcodedAPIKeysAndTokensCheck": {
+    "usages": [
+      "AzureKeyCredential",
+      "AccessToken",
+      "KeyCredential",
+      "AzureNamedKeyCredential",
+      "AzureSasCredential",
+      "AzureNamedKey",
+      "ClientSecretCredentialBuilder",
+      "UsernamePasswordCredentialBuilder",
+      "BasicAuthenticationCredential"
+    ],
+    "antiPatternMessage": "DefaultAzureCredential is recommended for authentication if the service client supports Token Credential (Entra ID Authentication). If not, then use Azure Key Credential for API key based authentication."
+  },
+  "GetSyncPollerOnPollerFluxCheck": {
+    "usages": "getSyncPoller",
+    "antiPatternMessage": "Use of getSyncPoller() on a PollerFlux detected. Directly use SyncPoller to handle synchronous polling tasks."
+  },
+  "ServiceBusReceiveModeCheck": {
+    "scope": [
+      "ServiceBusReceiverClient",
+      "ServiceBusReceiverAsyncClient",
+      "ServiceBusProcessorClient"
+    ],
+    "usages": [
+      "receiveMode",
+      "prefetchCount"
+    ],
+    "antiPatternMessage": "A high prefetch value in PEEK_LOCK detected. We recommend a prefetch value of 0 or 1 for efficient message retrieval."
+  },
+  "DetectDiscouragedAPIUsageCheck": {
+    "hasDerivedRules": true,
+    "ConnectionStringCheck": {
+      "usages": "connectionString",
+      "antiPatternMessage": "Connection String detected. Use DefaultAzureCredential for Azure service client authentication instead if the service client supports Token Credential (Entra ID Authentication).",
+      "solution": "DefaultAzureCredential is recommended if the service client supports Token Credential (Entra ID Authentication). if not, then use Azure Key Credential / Connection Strings based authentication"
+    },
+    "GetCompletionsCheck": {
+      "usages": "getCompletions",
+      "scope": "com.azure.ai.openai",
+      "antiPatternMessage": "getCompletions API detected. Use the getChatCompletions API instead."
+    }
+  },
+  "DetectDiscouragedClientCheck": {
+    "hasDerivedRules": true,
+    "ServiceBusReceiverAsyncClientCheck": {
+      "usages": "ServiceBusReceiverAsyncClient",
+      "antiPatternMessage": "Use of ServiceBusReceiverAsyncClient detected. Use ServiceBusProcessorClient instead."
+    },
+    "EventHubConsumerAsyncClientCheck": {
+      "usages": "EventHubConsumerAsyncClient",
+      "antiPatternMessage": "Use of EventHubConsumerAsyncClient detected. Use EventProcessorClient instead which provides a higher-level abstraction that simplifies event processing, making it the preferred choice for most developers."
+    }
+  },
+  "SingleOperationInLoopCheck": {
+    "usages": [
+      "detectLanguageBatch",
+      "recognizeEntitiesBatch",
+      "recognizePiiEntitiesBatch",
+      "recognizeLinkedEntitiesBatch",
+      "extractKeyPhrasesBatch",
+      "analyzeSentimentBatch"
+    ],
+    "scope": "com.azure.ai.textanalytics",
+    "antiPatternMessage": "Single operation found in loop. This SDK provides a batch operation API, use it to perform multiple actions in a single request: "
+  },
+  "AsyncSubscribeChecker": {
+    "hasDerivedRules": true,
+    "UpdateCheckpointAsyncSubscribeChecker": {
+      "usages": "updateCheckpointAsync",
+      "scope": "EventBatchContext",
+      "antiPatternMessage": "Instead of `subscribe()`, call `block()` or `block()` with timeout, or use the synchronous version `updateCheckpoint()`"
+    }
+  },
+  "KustoQueriesWithTimeIntervalInQueryStringCheck": {
+    "regexPatterns": {
+      "KQL_ANTI_PATTERN_AGO": ".*ago\\(",
+      "KQL_ANTI_PATTERN_DATETIME": ".*datetime\\s*\\(",
+      "KQL_ANTI_PATTERN_NOW": ".*now\\(",
+      "KQL_ANTI_PATTERN_START_OF_PERIOD": ".*startofday\\(\\)|.*startofmonth\\(\\)|.*startofyear\\(\\)",
+      "KQL_ANTI_PATTERN_BETWEEN": ".*between\\(datetime\\("
+    },
+    "antiPatternMessage": "KQL queries with time intervals in the query string detected.",
+    "solution": "Use the QueryTimeInterval parameter in the client method parameters to specify the time interval for the query"
+  },
+  "EndpointOnNonAzureOpenAIAuthCheck": {
+    "usages": [
+      "endpoint",
+      "credential"
+    ],
+    "scope": "KeyCredential",
+    "antiPatternMessage": "Endpoint API should not be used with KeyCredential for non-Azure OpenAI clients."
+  },
+  "UseOfBlockOnAsyncClientsCheck": {
+    "usages": [
+      "block",
+      "blockOptional",
+      "blockFirst",
+      "blockLast",
+      "toIterable",
+      "toStream",
+      "toFuture",
+      "blockFirstOptional",
+      "blockLastOptional"
+    ],
+    "scope": [
+      "reactor.core.publisher.Flux",
+      "reactor.core.publisher.Mono"
+    ],
+    "antiPatternMessage": "Use of block methods on asynchronous clients detected. Switch to synchronous APIs instead."
+  },
+  "UpgradeLibraryVersionCheck": {
+    "antiPatternMessage": "A newer stable minor version of '{{fullName}}' is available. We recommend you update to version {{recommendedVersion}}.x."
+  },
+  "IncompatibleDependencyCheck": {
+    "antiPatternMessage": "The version of '{{fullName}}' is incompatible with other dependencies of the same library defined in the pom.xml. We recommend you update to version {{recommendedVersion}}.x of the same library release group."
+  }
+}

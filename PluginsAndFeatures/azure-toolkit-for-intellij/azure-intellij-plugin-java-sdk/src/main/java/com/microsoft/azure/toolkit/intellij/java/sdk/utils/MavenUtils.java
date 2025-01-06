@@ -1,16 +1,10 @@
 package com.microsoft.azure.toolkit.intellij.java.sdk.utils;
 
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiMethodCallExpression;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.MavenArtifactDetails;
-import lombok.extern.slf4j.Slf4j;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
-import javax.annotation.Nullable;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -18,6 +12,15 @@ import java.net.URL;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nullable;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import lombok.extern.slf4j.Slf4j;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 @Slf4j
 public final class MavenUtils {
@@ -100,5 +103,25 @@ public final class MavenUtils {
             log.debug("Maven artifact " + groupId + ":" + artifactId + " was last updated on " + mavenArtifactDetails.getLastUpdated() + ". Not refreshing cache.");
             return mavenArtifactDetails.getVersion();
         }
+    }
+
+    /**
+     * This method checks if the method call is an Azure client method call
+     * by checking the containing class of the method call
+     *
+     * @param methodCall the method call to check
+     * @return boolean true if the method call is an Azure client method call, false otherwise
+     */
+    public static boolean isAzureClientMethodCall(PsiMethodCallExpression methodCall) {
+
+        // Get the containing class of the method call
+        PsiClass containingClass = PsiTreeUtil.getParentOfType(methodCall, PsiClass.class);
+
+        if (containingClass != null) {
+            String className = containingClass.getQualifiedName();
+            // Check if the class name belongs to the com.azure namespace or any specific Azure SDK namespace
+            return className != null && className.startsWith(RuleConfig.AZURE_PACKAGE_NAME);
+        }
+        return false;
     }
 }

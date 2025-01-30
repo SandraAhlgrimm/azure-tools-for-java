@@ -23,11 +23,12 @@ The **Azure Toolkit for IntelliJ** is a project designed to empower Java develop
 - **Severity**: WARNING
 - **Recommendation**: Use `disableAutoComplete()` to control message completion explicitly. See the [Azure ServiceBus documentation](https://learn.microsoft.com/java/api/com.azure.messaging.servicebus.servicebusclientbuilder.servicebusreceiverclientbuilder-disableautocomplete) for guidance.
 
-#### **3. Optimize Receive Mode and Prefetch Value**
-- **Anti-pattern**: Using `PEEK_LOCK` with a high prefetch value.
-- **Issue**: Can lead to performance bottlenecks and message lock expirations.
+#### **3. Prefer EventProcessorClient over EventHubConsumerAsyncClient**
+- **Anti-pattern**: Use of low level “EventHubConsumerAsyncClient” useful only when building a Reactive library or 
+  an end-to-end Reactive application.
+- **Issue**: Increased complexity and potential misuse by non-experts in Reactive paradigms.
 - **Severity**: WARNING
-- **Recommendation**: Balance the prefetch value for efficient and concurrent processing.  
+- **Recommendation**: Use the higher-level `EventProcessorClient` for efficient and reliable event processing.  
   [Learn more](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-prefetch?tabs=dotnet#why-is-prefetch-not-the-default-option).
 
 #### **4. Use EventProcessorClient for Checkpoint Management**
@@ -53,7 +54,7 @@ The **Azure Toolkit for IntelliJ** is a project designed to empower Java develop
 
 #### **6. Use SyncPoller Instead of PollerFlux#getSyncPoller()**
 - **Anti-pattern**: Converting asynchronous polling to synchronous with `getSyncPoller()`.
-- **Issue**: Adds unnecessary complexity.
+- **Issue**: Adds unnecessary complexity and blocking on asynchronous operation.
 - **Severity**: WARNING
 - **Recommendation**: Use `SyncPoller` directly for synchronous operations.  
   [Learn more](https://learn.microsoft.com/java/api/com.azure.core.util.polling.syncpoller?view=azure-java-stable).

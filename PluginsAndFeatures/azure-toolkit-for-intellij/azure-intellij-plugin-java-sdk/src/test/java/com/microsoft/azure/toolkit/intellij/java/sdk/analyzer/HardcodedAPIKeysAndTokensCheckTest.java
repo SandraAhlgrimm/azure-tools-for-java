@@ -4,19 +4,19 @@
 package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.PsiExpression;
+import com.intellij.psi.PsiExpressionList;
 import com.intellij.psi.PsiJavaCodeReferenceElement;
 import com.intellij.psi.PsiLiteralExpression;
 import com.intellij.psi.PsiNewExpression;
-import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -39,11 +39,13 @@ import static org.mockito.Mockito.when;
  */
 public class HardcodedAPIKeysAndTokensCheckTest {
 
+    private static final String SUGGESTION_MESSAGE =
+        "DefaultAzureCredential is recommended for authentication if the service client supports Token Credential (Entra ID Authentication). If not, then use environment variables when using key based authentication.";
     @Mock
     private ProblemsHolder mockHolder;
 
     @Mock
-    private PsiElementVisitor mockVisitor;
+    private JavaElementVisitor mockVisitor;
 
     @BeforeEach
     public void setup() {
@@ -54,13 +56,12 @@ public class HardcodedAPIKeysAndTokensCheckTest {
     @ParameterizedTest
     @MethodSource("testCases")
     public void testHardcodedAPIKeysAndTokensCheck(TestCase testCase) {
-        PsiNewExpression mockExpression = mockMethodExpression(testCase.apiName, testCase.numOfInvocations);
-        mockVisitor.visitElement(mockExpression);
+        PsiNewExpression mockExpression = mockMethodExpression(testCase.apiName, testCase.credentialString,
+            testCase.numOfInvocations);
+        mockVisitor.visitNewExpression(mockExpression);
 
         verify(mockHolder, times(testCase.numOfInvocations))
-            .registerProblem(eq(mockExpression),
-                Mockito.contains(
-                    "DefaultAzureCredential is recommended for authentication if the service client supports Token Credential (Entra ID Authentication). If not, then use Azure Key Credential for API key based authentication."));
+            .registerProblem(eq(mockExpression),eq(SUGGESTION_MESSAGE));
     }
 
     @Test
@@ -71,53 +72,52 @@ public class HardcodedAPIKeysAndTokensCheckTest {
 
         when(newExpression.getClassReference()).thenReturn(javaCodeReferenceElement);
         when(javaCodeReferenceElement.getReferenceName()).thenReturn("AzureKeyCredential");
-        when(javaCodeReferenceElement.getQualifiedName()).thenReturn(RuleConfig.AZURE_PACKAGE_NAME);
+        when(javaCodeReferenceElement.getQualifiedName()).thenReturn("com.azure");
         when(newExpression.getChildren()).thenReturn(new PsiElement[]{literalExpression});
         when(literalExpression.getValue()).thenReturn(System.getenv());
 
-        mockVisitor.visitElement(newExpression);
+        mockVisitor.visitNewExpression(newExpression);
 
-        verify(mockHolder, times(0)).registerProblem(eq(newExpression),
-            Mockito.contains(
-                "DefaultAzureCredential is recommended for authentication if the service client supports Token Credential (Entra ID Authentication). If not, then use Azure Key Credential for API key based authentication."));
+        verify(mockHolder, times(0)).registerProblem(eq(newExpression), eq(SUGGESTION_MESSAGE));
     }
 
     private static Stream<TestCase> testCases() {
         return Stream.of(
-            new TestCase("AzureKeyCredential", 1),
-            new TestCase("AccessToken", 1),
-            new TestCase("KeyCredential", 1),
-            new TestCase("AzureNamedKeyCredential", 1),
-            new TestCase("AzureSasCredential", 1),
-            new TestCase("AzureNamedKey", 1),
-            new TestCase("ClientSecretCredentialBuilder", 1),
-            new TestCase("UsernamePasswordCredentialBuilder", 1),
-            new TestCase("BasicAuthenticationCredential", 1),
-            new TestCase("SomeOtherClient", 0),
-            new TestCase("", 0)
+            new TestCase("AzureKeyCredential", "340c6ea27d214f88b7a759fee63cbfa1", 1),
+            new TestCase("AccessToken", "access-token", 0),
+            new TestCase("KeyCredential", "340c6ea27d214f88b7a759fee63cbfa1", 1),
+            new TestCase("AzureNamedKeyCredential", "340c6ea27d214f88b7a759fee63cbfa1", 1),
+            new TestCase("AzureSasCredential", "", 0),
+            new TestCase("AzureNamedKey", "", 0),
+            new TestCase("SomeOtherClient", "340c6ea27d214f88b7a759fee63cbfa1", 0),
+            new TestCase("", "340c6ea27d214f88b7a759fee63cbfa1", 0)
         );
     }
 
-    private PsiNewExpression mockMethodExpression(String authServiceToCheck, int numOfInvocations) {
+    private PsiNewExpression mockMethodExpression(String authServiceToCheck, String credentialString, int numOfInvocations) {
         PsiNewExpression newExpression = mock(PsiNewExpression.class);
         PsiJavaCodeReferenceElement javaCodeReferenceElement = mock(PsiJavaCodeReferenceElement.class);
         PsiLiteralExpression literalExpression = mock(PsiLiteralExpression.class);
+        PsiExpressionList expressionList = mock(PsiExpressionList.class);
 
         when(newExpression.getClassReference()).thenReturn(javaCodeReferenceElement);
         when(javaCodeReferenceElement.getReferenceName()).thenReturn(authServiceToCheck);
-        when(javaCodeReferenceElement.getQualifiedName()).thenReturn(RuleConfig.AZURE_PACKAGE_NAME);
-        when(newExpression.getChildren()).thenReturn(new PsiElement[]{literalExpression});
-        when(literalExpression.getValue()).thenReturn("hardcoded-api-token");
+        when(javaCodeReferenceElement.getQualifiedName()).thenReturn("com.azure");
+        when(newExpression.getChildren()).thenReturn(new PsiElement[]{expressionList});
+        when(expressionList.getExpressions()).thenReturn(new PsiExpression[]{literalExpression});
+        when(literalExpression.getValue()).thenReturn(credentialString);
 
         return newExpression;
     }
 
     static class TestCase {
         String apiName;
+        String credentialString;
         int numOfInvocations;
 
-        TestCase(String apiName, int numOfInvocations) {
+        TestCase(String apiName, String credentialString, int numOfInvocations) {
             this.apiName = apiName;
+            this.credentialString = credentialString;
             this.numOfInvocations = numOfInvocations;
         }
     }

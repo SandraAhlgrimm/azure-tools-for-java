@@ -6,7 +6,9 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiType;
@@ -34,20 +36,24 @@ public class GetSyncPollerOnPollerFluxCheckTest {
     private JavaElementVisitor mockVisitor;
 
     @Mock
-    private PsiMethodCallExpression mockElement;
+    private PsiMethodCallExpression mockMethodCallExpression;
+
+    @Mock
+    private PsiElement mockElement;
 
     @BeforeEach
     public void setup() {
         mockHolder = mock(ProblemsHolder.class);
         mockVisitor = new GetSyncPollerOnPollerFluxCheck().new GetSyncPollerOnPollerFluxVisitor(mockHolder);
-        mockElement = mock(PsiMethodCallExpression.class);
+        mockMethodCallExpression = mock(PsiMethodCallExpression.class);
+        mockElement = mock(PsiElement.class);
     }
 
     @ParameterizedTest
     @MethodSource("testCases")
     public void testGetSyncPollerOnPollerFluxCheck(TestCase testCase) {
         mockMethodExpression(testCase.methodName, testCase.className, testCase.numberOfInvocations);
-        mockVisitor.visitMethodCallExpression(mockElement);
+        mockVisitor.visitMethodCallExpression(mockMethodCallExpression);
         verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(mockElement, "Use of getSyncPoller() on a " +
             "PollerFlux detected. Directly use SyncPoller to handle synchronous polling tasks.");
     }
@@ -56,7 +62,7 @@ public class GetSyncPollerOnPollerFluxCheckTest {
         return Stream.of(
             new TestCase("getSyncPoller", "com.azure.core.util.polling.PollerFlux", 1),
             new TestCase("getAnotherMethod", "com.azure.core.util.polling.PollerFlux", 0),
-            new TestCase("getSyncPoller", "com.azure.core.util.polling.DifferentClassName", 0),
+            new TestCase("getSyncPoller", "com.not.azure..util.polling.DifferentClassName", 0),
             new TestCase("getSyncPoller", null, 0)
         );
     }
@@ -66,15 +72,14 @@ public class GetSyncPollerOnPollerFluxCheckTest {
         PsiExpression expression = mock(PsiExpression.class);
         PsiType type = mock(PsiType.class);
         PsiClass containingClass = mock(PsiClass.class);
-        PsiTreeUtil mockTreeUtil = mock(PsiTreeUtil.class);
+        PsiMethod method = mock(PsiMethod.class);
 
-        when(mockElement.getMethodExpression()).thenReturn(referenceExpression);
-        when(referenceExpression.getReferenceName()).thenReturn(methodName);
-        when(referenceExpression.getQualifierExpression()).thenReturn(expression);
-        when(expression.getType()).thenReturn(type);
-        when(type.getCanonicalText()).thenReturn(className);
-        when(mockTreeUtil.getParentOfType(mockElement, PsiClass.class)).thenReturn(containingClass);
+        when(mockMethodCallExpression.resolveMethod()).thenReturn(method);
+        when(method.getContainingClass()).thenReturn(containingClass);
         when(containingClass.getQualifiedName()).thenReturn(className);
+        when(mockMethodCallExpression.getMethodExpression()).thenReturn(referenceExpression);
+        when(referenceExpression.getReferenceName()).thenReturn(methodName);
+        when(referenceExpression.getReferenceNameElement()).thenReturn(mockElement);
     }
 
     private static class TestCase {

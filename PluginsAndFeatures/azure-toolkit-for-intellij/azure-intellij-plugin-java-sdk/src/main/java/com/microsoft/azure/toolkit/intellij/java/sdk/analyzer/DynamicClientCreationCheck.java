@@ -7,6 +7,7 @@ import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.*;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import org.jetbrains.annotations.NotNull;
 
@@ -82,7 +83,7 @@ public class DynamicClientCreationCheck extends LocalInspectionTool {
                 return false;
             }
 
-            return qualifier.getType().getCanonicalText().startsWith(RuleConfig.AZURE_PACKAGE_NAME);
+            return HelperUtils.isAzurePackage(qualifier.getType().getCanonicalText());
         }
     }
 }

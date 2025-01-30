@@ -6,11 +6,11 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
-import com.intellij.psi.PsiExpression;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiMethodCallExpression;
-import com.intellij.psi.PsiType;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
-import com.microsoft.azure.toolkit.intellij.java.sdk.utils.MavenUtils;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import org.jetbrains.annotations.NotNull;
 
@@ -85,8 +85,18 @@ public class GetSyncPollerOnPollerFluxCheck extends LocalInspectionTool {
                 return;
             }
 
-            if (isGetSyncPollerCall(expression) && isAsyncContext(expression) && MavenUtils.isAzureClientMethodCall(expression)) {
-                holder.registerProblem(expression, RULE_CONFIG.getAntiPatternMessage());
+            PsiMethod method = expression.resolveMethod();
+            if (method != null) {
+                PsiClass containingClass = method.getContainingClass();
+                if (containingClass != null) {
+                    String qualifiedName = containingClass.getQualifiedName();
+                    if (qualifiedName != null && HelperUtils.isAzurePackage(qualifiedName)) {
+                        if (isGetSyncPollerCall(expression)) {
+                            holder.registerProblem(expression.getMethodExpression().getReferenceNameElement(),
+                                RULE_CONFIG.getAntiPatternMessage());
+                        }
+                    }
+                }
             }
         }
 
@@ -102,27 +112,6 @@ public class GetSyncPollerOnPollerFluxCheck extends LocalInspectionTool {
                 if (expression.getMethodExpression().getReferenceName().startsWith(usage)) {
                     return true;
                 }
-            }
-            return false;
-        }
-
-        /**
-         * Helper method to check if the method call is on a PollerFlux type.
-         *
-         * @param methodCall Method call expression to check
-         *
-         * @return true if the method call is on a reactive type, false otherwise
-         */
-        private boolean isAsyncContext(@NotNull PsiMethodCallExpression methodCall) {
-            PsiExpression qualifier = methodCall.getMethodExpression().getQualifierExpression();
-            if (qualifier == null) {
-                return false;
-            }
-
-            PsiType type = qualifier.getType();
-            String typeName = type.getCanonicalText();
-            if (typeName != null && typeName.contains("PollerFlux")) {
-                return true;
             }
             return false;
         }

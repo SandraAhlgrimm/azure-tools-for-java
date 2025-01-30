@@ -7,6 +7,7 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
@@ -26,7 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests for {@link DetectDiscouragedAPIUsageCheck} and derived classes.
+ * Tests for {@link GetCompletionsCheck} and {@link ConnectionStringCheck} .
  */
 public class DetectDiscouragedAPIUsageCheckTest {
 
@@ -52,16 +53,12 @@ public class DetectDiscouragedAPIUsageCheckTest {
     @ParameterizedTest
     @MethodSource("provideTestCases")
     public void detectsDiscouragedAPIUsage(TestCase testCase) {
+        JavaElementVisitor visitor = createVisitor(testCase.visitorClass);
         setupMockAPI(testCase.methodToCheck, testCase.numOfInvocations, testCase.packageName,
             testCase.suggestionMessage);
-        mockVisitor = createVisitor(testCase.ruleConfig);
-        mockVisitor.visitElement(methodCallExpression);
+        visitor.visitMethodCallExpression(methodCallExpression);
         verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(problemElement),
             eq(testCase.suggestionMessage));
-    }
-
-    private JavaElementVisitor createVisitor(RuleConfig ruleConfig) {
-        return new DetectDiscouragedAPIUsageCheck.DetectDiscouragedAPIUsageVisitor(mockHolder, ruleConfig);
     }
 
     private static RuleConfig getGetCompletionsConfig() {
@@ -69,7 +66,7 @@ public class DetectDiscouragedAPIUsageCheckTest {
         when(getCompletionsConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("getCompletions"));
         when(getCompletionsConfig.getScopeToCheck()).thenReturn(Collections.singletonList("com.azure.ai.openai"));
         when(getCompletionsConfig.getAntiPatternMessage()).thenReturn(
-            "getCompletions API detected. Use the getChatCompletions API instead.");
+            "getCompletions API usage detected. Use the getChatCompletions API instead.");
         return getCompletionsConfig;
     }
 
@@ -78,7 +75,7 @@ public class DetectDiscouragedAPIUsageCheckTest {
         when(connectionStringConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("connectionString"));
         when(connectionStringConfig.getScopeToCheck()).thenReturn(Collections.singletonList("com.azure"));
         when(connectionStringConfig.getAntiPatternMessage()).thenReturn(
-            "Connection String detected. Use DefaultAzureCredential for Azure service client authentication instead if the service client supports Token Credential (Entra ID Authentication).");
+            "Connection String API usage detected. Use DefaultAzureCredential for Azure service client authentication instead if the service client supports Token Credential (Entra ID Authentication).");
         return connectionStringConfig;
     }
 
@@ -98,28 +95,46 @@ public class DetectDiscouragedAPIUsageCheckTest {
         when(methodExpression.getReferenceNameElement()).thenReturn(problemElement);
     }
 
+    private JavaElementVisitor createVisitor(Class<? extends PsiElementVisitor> visitorClass) {
+        if (visitorClass == GetCompletionsCheck.GetCompletionsVisitor.class) {
+            return new GetCompletionsCheck.GetCompletionsVisitor(mockHolder);
+        } else if (visitorClass == ConnectionStringCheck.ConnectionStringCheckVisitor.class) {
+            return new ConnectionStringCheck.ConnectionStringCheckVisitor(mockHolder);
+        }
+        throw new IllegalArgumentException("Unsupported visitor class: " + visitorClass);
+    }
+
     private static Stream<TestCase> provideTestCases() {
         return Stream.of(
-            new TestCase(getConnectionStringConfig(), "connectionString", "com.azure", "Connection String detected. " +
-                "Use DefaultAzureCredential for Azure service client authentication instead if the service client supports Token Credential (Entra ID Authentication).",
+            new TestCase(ConnectionStringCheck.ConnectionStringCheckVisitor.class,
+                getConnectionStringConfig(),
+                "connectionString", "com.azure",
+                "Connection String API usage detected. Use DefaultAzureCredential for Azure service client authentication instead if the service client supports Token Credential (Entra ID Authentication).",
                 1),
-            new TestCase(getGetCompletionsConfig(), "getCompletions", "com.azure.ai.openai", "getCompletions API " +
+            new TestCase(GetCompletionsCheck.GetCompletionsVisitor.class,
+                getGetCompletionsConfig(), "getCompletions", "com.azure.ai.openai", "getCompletions API " +
                 "detected. Use the getChatCompletions API instead.", 1),
-            new TestCase(getConnectionStringConfig(), "allowedMethod", "com.azure", "", 0),
-            new TestCase(getConnectionStringConfig(), "connectionString", "com.microsoft.azure", "", 0),
-            new TestCase(getGetCompletionsConfig(), "getCompletions", "com.azure.other", "", 0)
+            new TestCase(ConnectionStringCheck.ConnectionStringCheckVisitor.class,
+                getConnectionStringConfig(), "allowedMethod", "com.azure", "", 0),
+            new TestCase(ConnectionStringCheck.ConnectionStringCheckVisitor.class,
+                getConnectionStringConfig(), "connectionString", "com.microsoft.azure", "", 0),
+            new TestCase(GetCompletionsCheck.GetCompletionsVisitor.class,
+                getGetCompletionsConfig(), "getCompletions", "com.azure.other", "", 0)
         );
     }
 
     private static class TestCase {
+        Class<? extends PsiElementVisitor> visitorClass;
         String methodToCheck;
         String packageName;
         String suggestionMessage;
         int numOfInvocations;
         RuleConfig ruleConfig;
 
-        TestCase(RuleConfig ruleConfig, String methodToCheck, String packageName, String suggestionMessage,
+        TestCase(Class<? extends PsiElementVisitor> visitorClass, RuleConfig ruleConfig, String methodToCheck, String packageName,
+            String suggestionMessage,
             int numOfInvocations) {
+            this.visitorClass = visitorClass;
             this.methodToCheck = methodToCheck;
             this.packageName = packageName;
             this.suggestionMessage = suggestionMessage;

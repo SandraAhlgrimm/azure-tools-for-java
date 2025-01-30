@@ -3,31 +3,29 @@
 
 package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
+import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiBlockStatement;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiCodeBlock;
 import com.intellij.psi.PsiDeclarationStatement;
 import com.intellij.psi.PsiDoWhileStatement;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiExpressionStatement;
 import com.intellij.psi.PsiForStatement;
 import com.intellij.psi.PsiForeachStatement;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiStatement;
+import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiVariable;
 import com.intellij.psi.PsiWhileStatement;
 import com.intellij.psi.util.PsiTreeUtil;
-import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.SingleOperationInLoopCheck.SingleOperationInLoopVisitor;
-import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.psi.PsiElement;
-
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 
@@ -58,6 +56,7 @@ import static org.mockito.Mockito.when;
  * in enhanced for loop.")) .subscribe(); }
  */
 public class SingleOperationInLoopCheckTest {
+    private static final String PROBLEM_DESCRIPTION = "This SDK provides a batch operation API, use it to perform multiple actions in a single request. Consider using %sBatch instead.";
 
     @Mock
     private ProblemsHolder mockHolder;
@@ -80,44 +79,40 @@ public class SingleOperationInLoopCheckTest {
             setupWithSinglePsiDeclarationStatement(testCase.loopStatement, testCase.packageName,
                 testCase.numberOfInvocations, testCase.methodName);
             verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(initializer),
-                Mockito.contains(
-                    "Single operation found in loop. This SDK provides a batch operation API, use it to perform multiple actions in a single request: " +
-                        testCase.methodName + "Batch"));
+                Mockito.eq(String.format(PROBLEM_DESCRIPTION, testCase.methodName)));
         } else {
             setupWithSinglePsiExpressionStatement(testCase.loopStatement, testCase.packageName,
                 testCase.numberOfInvocations, testCase.methodName);
             verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(expression),
-                Mockito.contains(
-                    "Single operation found in loop. This SDK provides a batch operation API, use it to perform multiple actions in a single request: " +
-                        testCase.methodName + "Batch"));
+                Mockito.eq(String.format(PROBLEM_DESCRIPTION, testCase.methodName)));
         }
     }
 
     private JavaElementVisitor createVisitor() {
-        boolean isOnTheFly = true;
-        SingleOperationInLoopVisitor visitor = new SingleOperationInLoopVisitor(mockHolder, isOnTheFly);
-        return visitor;
+        return new SingleOperationInLoopTextAnalyticsCheck.SingleOperationInLoopVisitor(mockHolder);
     }
 
     private void setupWithSinglePsiExpressionStatement(PsiStatement loopStatement, String packageName,
         int numberOfInvocations, String methodName) {
         PsiBlockStatement loopBody = mock(PsiBlockStatement.class);
         PsiCodeBlock codeBlock = mock(PsiCodeBlock.class);
-        expression = mock(PsiMethodCallExpression.class);
-        PsiTreeUtil treeUtil = mock(PsiTreeUtil.class);
         PsiClass containingClass = mock(PsiClass.class);
         PsiReferenceExpression referenceExpression = mock(PsiReferenceExpression.class);
         PsiExpressionStatement mockStatement = mock(PsiExpressionStatement.class);
         PsiStatement[] statements = new PsiStatement[] {mockStatement};
+        PsiExpression qualifierExpression = mock(PsiExpression.class);
 
         when(mockStatement.getExpression()).thenReturn(expression);
         when(loopBody.getCodeBlock()).thenReturn(codeBlock);
         when(codeBlock.getStatements()).thenReturn(statements);
-        when(treeUtil.getParentOfType(expression, PsiClass.class)).thenReturn(containingClass);
-        when(containingClass.getQualifiedName()).thenReturn(packageName);
         when(expression.getMethodExpression()).thenReturn(referenceExpression);
+        when(referenceExpression.getQualifierExpression()).thenReturn(qualifierExpression);
+        when(qualifierExpression.getType()).then(invocation -> {
+            PsiType psiType = mock(PsiType.class);
+            when(psiType.getCanonicalText()).thenReturn(packageName);
+            return psiType;
+        });
         when(referenceExpression.getReferenceName()).thenReturn(methodName);
-
         if (loopStatement instanceof PsiForStatement) {
             when(((PsiForStatement) loopStatement).getBody()).thenReturn(loopBody);
             mockVisitor.visitForStatement((PsiForStatement) loopStatement);
@@ -139,20 +134,23 @@ public class SingleOperationInLoopCheckTest {
         PsiCodeBlock codeBlock = mock(PsiCodeBlock.class);
         PsiVariable element = mock(PsiVariable.class);
         PsiElement[] elements = new PsiElement[] {element};
-        initializer = mock(PsiMethodCallExpression.class);
-        PsiTreeUtil treeUtil = mock(PsiTreeUtil.class);
         PsiClass containingClass = mock(PsiClass.class);
         PsiReferenceExpression referenceExpression = mock(PsiReferenceExpression.class);
         PsiDeclarationStatement mockStatement = mock(PsiDeclarationStatement.class);
         PsiStatement[] statements = new PsiStatement[] {mockStatement};
+        PsiExpression qualifierExpression = mock(PsiExpression.class);
 
         when(mockStatement.getDeclaredElements()).thenReturn(elements);
         when(loopBody.getCodeBlock()).thenReturn(codeBlock);
         when(codeBlock.getStatements()).thenReturn(statements);
         when(element.getInitializer()).thenReturn(initializer);
-        when(treeUtil.getParentOfType(initializer, PsiClass.class)).thenReturn(containingClass);
-        when(containingClass.getQualifiedName()).thenReturn(packageName);
         when(initializer.getMethodExpression()).thenReturn(referenceExpression);
+        when(referenceExpression.getQualifierExpression()).thenReturn(qualifierExpression);
+        when(qualifierExpression.getType()).then(invocation -> {
+            PsiType psiType = mock(PsiType.class);
+            when(psiType.getCanonicalText()).thenReturn(packageName);
+            return psiType;
+        });
         when(referenceExpression.getReferenceName()).thenReturn(methodName);
 
         if (loopStatement instanceof PsiForStatement) {

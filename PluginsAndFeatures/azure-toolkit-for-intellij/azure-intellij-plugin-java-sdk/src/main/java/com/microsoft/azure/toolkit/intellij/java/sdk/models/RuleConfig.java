@@ -14,22 +14,16 @@ import java.util.Map;
 public class RuleConfig {
     public static final String DEFAULT_SCOPE = "all";
     public static final String DEFAULT_USAGE = "all";
-    public static final String AZURE_PACKAGE_NAME = "com.azure";
-    public static final String AZURE_MAVEN_METADATA_URL = "https://repo1.maven.org/maven2/com/azure/azure-sdk-bom" +
-        "/maven-metadata.xml";
-    public static final String POM_XML = "pom.xml";
-    public static final String SUPPORTED_VERSION_URL = "https://raw.githubusercontent" +
-        ".com/Azure/azure-sdk-for-java/main/eng/versioning/supported_external_dependency_versions.json";
     public static final RuleConfig EMPTY_RULE =
         new RuleConfig(Collections.singletonList(DEFAULT_USAGE),
             Collections.singletonList(DEFAULT_SCOPE),
             null,
-            Collections.emptyMap());
-
+            Collections.emptyMap(), true);
     private final List<String> usagesToCheck;
     private final List<String> scopeToCheck;
     private final String antiPatternMessage;
     private final Map<String, String> regexPatternsToCheck;
+    private final boolean skipRuleCheck;
 
     /**
      * Constructor for RuleConfig.
@@ -38,19 +32,21 @@ public class RuleConfig {
      * @param scopeToCheck List of clients to check. Defaults to "all" if null or empty.
      * @param antiPatternMessage Antipattern messages to display.
      * @param regexPatternsToCheck Map of regex patterns to check.
+     * @param skipRuleCheck Whether to skip the rule check.
      */
     public RuleConfig(List<String> usagesToCheck, List<String> scopeToCheck, String antiPatternMessage,
-        Map<String, String> regexPatternsToCheck) {
+        Map<String, String> regexPatternsToCheck, boolean skipRuleCheck) {
         this.usagesToCheck = usagesToCheck == null || usagesToCheck.isEmpty()
-            ? Collections.singletonList(DEFAULT_USAGE)
+            ? Collections.emptyList()
             : Collections.unmodifiableList(usagesToCheck);
         this.scopeToCheck = scopeToCheck == null || scopeToCheck.isEmpty()
-            ? Collections.singletonList(DEFAULT_SCOPE)
+            ? Collections.emptyList()
             : Collections.unmodifiableList(scopeToCheck);
         this.antiPatternMessage = antiPatternMessage;
         this.regexPatternsToCheck = regexPatternsToCheck == null
             ? Collections.emptyMap()
             : Collections.unmodifiableMap(regexPatternsToCheck);
+        this.skipRuleCheck = skipRuleCheck;
     }
 
     /**
@@ -59,10 +55,8 @@ public class RuleConfig {
      * @return True if the rule should be skipped, false otherwise.
      */
     public boolean skipRuleCheck() {
-        return this == EMPTY_RULE;
+        return skipRuleCheck;
     }
-
-    // Getters
 
     /**
      * This method returns the list of methods to check.

@@ -8,173 +8,111 @@
                 implementation="com.microsoft.azure.toolkit.intellij.java.sdk.MavenProjectReportGenerator"/>
         <localInspection
                 language="JAVA"
-                shortName="StorageUploadWithoutLengthCheck"
-                displayName="Storage Upload Without Length Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="INFO"
-
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.StorageUploadWithoutLengthCheck">
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="DisableAutoCompleteCheck"
-                displayName="Disable Auto-Complete Check"
+                shortName="ConnectionStringCheck"
+                displayName="Detect discouraged API usage Check"
                 groupName="Azure SDK Rules"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DisableAutoCompleteCheck">
-
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.ConnectionStringCheck">
         </localInspection>
-
         <localInspection
                 language="JAVA"
-                shortName="DynamicClientCreationCheck"
-                displayName="Dynamic Client Creation Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DynamicClientCreationCheck">
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="HardcodedAPIKeysAndTokensCheck"
-                displayName="Hardcoded API Keys And Tokens Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.HardcodedAPIKeysAndTokensCheck">
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="DetectDiscouragedAPIUsageCheck"
-                displayName="Detect Discouraged API UsageCheck"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DetectDiscouragedAPIUsageCheck">
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="GetSyncPollerOnPollerFluxCheck"
-                displayName="GetSyncPoller On Poller Flux Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.GetSyncPollerOnPollerFluxCheck">
-
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="ServiceBusReceiveModeCheck"
-                displayName="ServiceBus ReceiveMode Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.ServiceBusReceiveModeCheck">
-
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="SingleOperationInLoopCheck"
-                displayName="Single Operation In Loop Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.SingleOperationInLoopCheck">
-
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="DetectDiscouragedClientCheck"
+                shortName="ServiceBusReceiverAsyncClientCheck"
                 displayName="Detect discouraged client check"
                 groupName="Azure SDK"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DetectDiscouragedClientCheck">
-
-
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.ServiceBusReceiverAsyncClientCheck">
         </localInspection>
-
         <localInspection
                 language="JAVA"
-                shortName="UpdateCheckpointAsyncSubscribeChecker"
-                displayName="Update Checkpoint Async Subscribe Checker"
+                shortName="EventHubConsumerAsyncClientCheck"
+                displayName="Detect discouraged client check"
+                groupName="Azure SDK"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.EventHubConsumerAsyncClientCheck">
+        </localInspection>
+        <localInspection
+                language="JAVA"
+                shortName="GetCompletionsCheck"
+                displayName="Detect discouraged API usage Check"
                 groupName="Azure SDK Rules"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UpdateCheckpointAsyncSubscribeChecker">
-
-
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.GetCompletionsCheck">
         </localInspection>
-
         <localInspection
                 language="JAVA"
-                shortName="KustoQueriesWithTimeIntervalInQueryStringCheck"
-                displayName="Kusto Queries With Time Interval In Query String Check"
+                shortName="DisableAutoCompleteCheck"
+                displayName="Disable auto-complete check"
                 groupName="Azure SDK Rules"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.KustoQueriesWithTimeIntervalInQueryStringCheck">
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DisableAutoCompleteCheck">
         </localInspection>
-
+        <localInspection
+                language="JAVA"
+                shortName="DynamicClientCreationCheck"
+                displayName="Dynamic client creation check"
+                groupName="Azure SDK Rules"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DynamicClientCreationCheck">
+        </localInspection>
+        <localInspection
+                language="JAVA"
+                shortName="GetSyncPollerOnPollerFluxCheck"
+                displayName="GetSyncPoller on poller flux check"
+                groupName="Azure SDK Rules"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.GetSyncPollerOnPollerFluxCheck">
+        </localInspection>
+        <localInspection
+                language="JAVA"
+                shortName="HardcodedAPIKeysAndTokensCheck"
+                displayName="Hardcoded API keys and tokens check"
+                groupName="Azure SDK Rules"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.HardcodedAPIKeysAndTokensCheck">
+        </localInspection>
+        <localInspection
+                language="JAVA"
+                shortName="SingleOperationInLoopTextAnalyticsCheck"
+                displayName="Single operation in loop check"
+                groupName="Azure SDK Rules"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.SingleOperationInLoopTextAnalyticsCheck">
+        </localInspection>
+        <localInspection
+                language="JAVA"
+                shortName="StorageUploadWithoutLengthCheck"
+                displayName="Storage upload without length check"
+                groupName="Azure SDK Rules"
+                enabledByDefault="true"
+                level="INFO"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.StorageUploadWithoutLengthCheck">
+        </localInspection>
+        <localInspection
+                language="JAVA"
+                shortName="UpdateCheckpointAsyncSubscribeCheck"
+                displayName="UpdateCheckpointAsync subscribe check"
+                groupName="Azure SDK Rules"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UpdateCheckpointAsyncSubscribeCheck">
+        </localInspection>
         <localInspection
                 language="JAVA"
                 shortName="UseOfBlockOnAsyncClientsCheck"
-                displayName="Use Of Block On Async Clients Check"
+                displayName="Use of block on async clients check"
                 groupName="Azure SDK Rules"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UseOfBlockOnAsyncClientsCheck">
-
-
-        </localInspection>
-
-        <localInspection
-                language="JAVA"
-                shortName="EndpointOnNonAzureOpenAIAuthCheck"
-                displayName="Endpoint On Non-Azure OpenAI Authentication Check"
-                groupName="Azure SDK"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.EndpointOnNonAzureOpenAIAuthCheck">
-
-
-        </localInspection>
-
-        <localInspection
-                language="XML"
-                shortName="UpgradeLibraryVersionCheck"
-                displayName="Upgrade Library Version Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UpgradeLibraryVersionCheck">
-
-        </localInspection>
-
-        <localInspection
-                language="XML"
-                shortName="IncompatibleDependencyCheck"
-                displayName="Incompatible Dependency Check"
-                groupName="Azure SDK Rules"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.IncompatibleDependencyCheck">
-
         </localInspection>
     </extensions>
 </idea-plugin>

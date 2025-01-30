@@ -5,16 +5,20 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.openapi.util.NlsSafe;
 import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiClassType;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiType;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Inspection tool to check for the use of blocking method calls on async clients in Azure SDK.
@@ -58,12 +62,17 @@ public class UseOfBlockOnAsyncClientsCheck extends LocalInspectionTool {
         public void visitMethodCallExpression(@NotNull PsiMethodCallExpression expression) {
             super.visitMethodCallExpression(expression);
 
-            if (SKIP_WHOLE_RULE || !isBlockingMethodCall(expression)) {
+            if (SKIP_WHOLE_RULE) {
+                return;
+            }
+
+            if (!isBlockingMethodCall(expression)) {
                 return;
             }
 
             if (isAsyncClientBlockingCall(expression)) {
-                holder.registerProblem(expression, RULE_CONFIG.getAntiPatternMessage());
+                PsiElement problemElement = expression.getMethodExpression().getReferenceNameElement();
+                holder.registerProblem(problemElement, RULE_CONFIG.getAntiPatternMessage());
             }
         }
 
@@ -98,12 +107,7 @@ public class UseOfBlockOnAsyncClientsCheck extends LocalInspectionTool {
          * @return true if it's a blocking method call on a reactive type, false otherwise
          */
         private boolean isBlockingMethodCall(@NotNull PsiMethodCallExpression expression) {
-            for (String methodToCheck : RULE_CONFIG.getUsagesToCheck()) {
-                if (expression.getMethodExpression().getReferenceName().equals(methodToCheck)) {
-                    return true;
-                }
-            }
-            return false;
+            return RULE_CONFIG.getUsagesToCheck().stream().anyMatch(expression.getMethodExpression().getReferenceName()::equals);
         }
 
         /**
@@ -119,8 +123,8 @@ public class UseOfBlockOnAsyncClientsCheck extends LocalInspectionTool {
                 PsiType clientType = clientExpression.getType();
                 if (clientType instanceof PsiClassType) {
                     PsiClass clientClass = ((PsiClassType) clientType).resolve();
-                    return clientClass != null &&
-                        clientClass.getQualifiedName().startsWith(RuleConfig.AZURE_PACKAGE_NAME) &&
+                    String qualifiedName = clientClass.getQualifiedName();
+                    return qualifiedName != null && HelperUtils.isAzurePackage(clientClass.getQualifiedName()) &&
                         clientClass.getQualifiedName().endsWith("AsyncClient");
                 }
             }

@@ -1,10 +1,6 @@
 package com.microsoft.azure.toolkit.intellij.java.sdk.utils;
 
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiMethodCallExpression;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.MavenArtifactDetails;
-import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -32,7 +28,7 @@ public final class MavenUtils {
     /**
      * Gets the latest released version of the given artifact from Maven repository.
      *
-     * @param groupId    The group id of the artifact.
+     * @param groupId The group id of the artifact.
      * @param artifactId The artifact id of the artifact.
      * @return The latest version or {@code null} if an error occurred while retrieving the latest
      * version.
@@ -103,25 +99,5 @@ public final class MavenUtils {
             log.debug("Maven artifact " + groupId + ":" + artifactId + " was last updated on " + mavenArtifactDetails.getLastUpdated() + ". Not refreshing cache.");
             return mavenArtifactDetails.getVersion();
         }
-    }
-
-    /**
-     * This method checks if the method call is an Azure client method call
-     * by checking the containing class of the method call
-     *
-     * @param methodCall the method call to check
-     * @return boolean true if the method call is an Azure client method call, false otherwise
-     */
-    public static boolean isAzureClientMethodCall(PsiMethodCallExpression methodCall) {
-
-        // Get the containing class of the method call
-        PsiClass containingClass = PsiTreeUtil.getParentOfType(methodCall, PsiClass.class);
-
-        if (containingClass != null) {
-            String className = containingClass.getQualifiedName();
-            // Check if the class name belongs to the com.azure namespace or any specific Azure SDK namespace
-            return className != null && className.startsWith(RuleConfig.AZURE_PACKAGE_NAME);
-        }
-        return false;
     }
 }

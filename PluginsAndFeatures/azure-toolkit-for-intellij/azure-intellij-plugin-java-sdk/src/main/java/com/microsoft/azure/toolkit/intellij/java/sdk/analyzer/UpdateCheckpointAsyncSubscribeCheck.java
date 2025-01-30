@@ -3,10 +3,15 @@
 
 package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
+import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,7 +21,20 @@ import org.jetbrains.annotations.NotNull;
  * updateCheckpointAsync(). If the method call is updateCheckpointAsync() and the following method is subscribe, a
  * problem is registered.
  */
-public class UpdateCheckpointAsyncSubscribeChecker extends AsyncSubscribeChecker {
+public class UpdateCheckpointAsyncSubscribeCheck extends LocalInspectionTool {
+
+    /**
+     * Build the visitor for the inspection. This visitor will be used to traverse the PSI tree.
+     *
+     * @param holder The holder for the problems found
+     *
+     * @return The visitor for the inspection. This is not used anywhere else in the code.
+     */
+    @NotNull
+    @Override
+    public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
+        return new UpdateCheckpointAsyncVisitor(holder);
+    }
 
     /**
      * This class extends the JavaElementVisitor to visit the elements in the code. It checks if the method call is
@@ -32,22 +50,17 @@ public class UpdateCheckpointAsyncSubscribeChecker extends AsyncSubscribeChecker
         private static final boolean SKIP_WHOLE_RULE;
 
         /**
-         * Constructor to initialize the visitor with the holder and isOnTheFly flag.
+         * Constructor to initialize the visitor with the holder.
          *
          * @param holder ProblemsHolder to register problems
-         * @param isOnTheFly boolean to check if the inspection is on the fly. If true, the inspection is performed as
-         * you type.
          */
-        UpdateCheckpointAsyncVisitor(ProblemsHolder holder, boolean isOnTheFly) {
+        UpdateCheckpointAsyncVisitor(ProblemsHolder holder) {
             this.holder = holder;
         }
 
         static {
-            final String ruleName = "UpdateCheckpointAsyncSubscribeChecker";
-            RuleConfigLoader centralRuleConfigLoader = RuleConfigLoader.getInstance();
-
-            // Get the RuleConfig object for the rule
-            RULE_CONFIG = centralRuleConfigLoader.getRuleConfig(ruleName);
+            RuleConfigLoader ruleConfigLoader = RuleConfigLoader.getInstance();
+            RULE_CONFIG = ruleConfigLoader.getRuleConfig("UpdateCheckpointAsyncSubscribeCheck");
             SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
         }
 
@@ -67,20 +80,19 @@ public class UpdateCheckpointAsyncSubscribeChecker extends AsyncSubscribeChecker
                 return;
             }
 
-            expression.getMethodExpression();
             if (expression.getMethodExpression().getReferenceName() == null) {
                 return;
             }
 
-            // Check if the method call is updateCheckpointAsync()
-            if (RULE_CONFIG.getUsagesToCheck().stream()
-                .anyMatch(usage -> usage.equals(expression.getMethodExpression().getReferenceName()))) {
+            // Check if the updateCheckpointAsync() method call is called on an provided context
+            // (EventBatchContext) object
+            PsiMethod method = HelperUtils.getResolvedMethod(expression);
+            if (HelperUtils.isItDiscouragedAPI(method, RULE_CONFIG.getUsagesToCheck(), RULE_CONFIG.getScopeToCheck())) {
 
                 // Check if the following method is `subscribe` and
-                // Check if the updateCheckpointAsync() method call is called on an provided context
-                // (EventBatchContext) object
-                if (isFollowingMethodSubscribe(expression) && isCalledInProvidedContext(expression, RULE_CONFIG.getScopeToCheck())) {
-                    holder.registerProblem(expression, RULE_CONFIG.getAntiPatternMessage());
+                if (HelperUtils.isFollowedBySubscribe(expression)) {
+                    PsiElement problemElement = expression.getMethodExpression().getReferenceNameElement();
+                    holder.registerProblem(problemElement, RULE_CONFIG.getAntiPatternMessage());
                 }
             }
         }

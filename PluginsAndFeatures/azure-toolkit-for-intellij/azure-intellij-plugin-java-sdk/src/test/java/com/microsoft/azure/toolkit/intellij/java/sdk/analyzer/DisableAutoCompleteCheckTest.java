@@ -31,7 +31,6 @@ import static org.mockito.Mockito.when;
  * This class is used to test the DisableAutoCompleteCheck class. It tests the visitDeclarationStatement method of the
  * DisableAutoCompleteVisitor class. Use of AC refers to the auto-complete feature.
  */
-
 public class DisableAutoCompleteCheckTest {
 
     @Mock

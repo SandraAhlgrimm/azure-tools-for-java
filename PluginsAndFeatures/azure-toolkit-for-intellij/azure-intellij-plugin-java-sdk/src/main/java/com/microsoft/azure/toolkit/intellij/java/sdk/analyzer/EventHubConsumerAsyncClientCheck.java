@@ -10,17 +10,17 @@ import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * This class is used to check if the ServiceBusReceiverAsyncClient is being used in the code.
+ * This class is used to check if the EventHubConsumerAsyncClient is being used in the code.
  */
-public class ServiceBusReceiverAsyncClientCheck extends LocalInspectionTool {
+public class EventHubConsumerAsyncClientCheck extends LocalInspectionTool {
 
     private final RuleConfig ruleConfig;
     private final boolean skipRuleCheck;
 
-    public ServiceBusReceiverAsyncClientCheck() {
+    public EventHubConsumerAsyncClientCheck() {
         super();
         RuleConfigLoader ruleConfigLoader = RuleConfigLoader.getInstance();
-        this.ruleConfig = ruleConfigLoader.getRuleConfig("ServiceBusReceiverAsyncClientCheck");
+        this.ruleConfig = ruleConfigLoader.getRuleConfig("EventHubConsumerAsyncClientCheck");
         this.skipRuleCheck = ruleConfig.skipRuleCheck();
     }
 

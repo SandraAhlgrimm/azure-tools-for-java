@@ -5,10 +5,10 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
-import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiClassType;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiTypeElement;
-import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DetectDiscouragedClientCheck.DetectDiscouragedClientVisitor;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import java.util.Collections;
 import java.util.stream.Stream;
@@ -60,41 +60,54 @@ public class DetectDiscouragedClientCheckTest {
     }
 
     @ParameterizedTest
-    @MethodSource("provideTestCases")
-    public void detectsDiscouragedClientUsage(TestCase testCase) {
-        mockVisitor = createVisitor(testCase.ruleConfig);
-        setupMockElement(mockTypeElement, testCase.numOfInvocations, testCase.usagesToCheck,
-            testCase.suggestionMessage);
-        mockVisitor.visitTypeElement(mockTypeElement);
+    @MethodSource("provideServiceBusReceiverAsyncClientTestCases")
+    void detectsServiceBusReceiverAsyncClientUsage(TestCase testCase) {
+        JavaElementVisitor visitor = new ServiceBusReceiverAsyncClientCheck().buildVisitor(mockHolder, false);
+        setupMockElement(mockTypeElement, testCase.numOfInvocations, testCase.usagesToCheck, testCase.suggestionMessage);
+        visitor.visitTypeElement(mockTypeElement);
         verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockTypeElement), contains(testCase.suggestionMessage));
     }
 
-    private JavaElementVisitor createVisitor(RuleConfig ruleConfig) {
-        return new DetectDiscouragedClientVisitor(mockHolder, ruleConfig);
+    @ParameterizedTest
+    @MethodSource("provideEventHubConsumerAsyncClientTestCases")
+    void detectsEventHubConsumerAsyncClientUsage(TestCase testCase) {
+        JavaElementVisitor visitor = new EventHubConsumerAsyncClientCheck().buildVisitor(mockHolder, false);
+        setupMockElement(mockTypeElement, testCase.numOfInvocations, testCase.usagesToCheck, testCase.suggestionMessage);
+        visitor.visitTypeElement(mockTypeElement);
+        verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockTypeElement), contains(testCase.suggestionMessage));
     }
 
-    private void setupMockElement(PsiTypeElement typeElement, int numberOfInvocations, String clientToCheck, String suggestionMessage) {
-        PsiType mockType = mock(PsiType.class);
+    private static Stream<TestCase> provideEventHubConsumerAsyncClientTestCases() {
+        RuleConfig eventHubConsumerAsyncClientConfig = mock(RuleConfig.class);
+        when(eventHubConsumerAsyncClientConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("EventHubConsumerAsyncClient"));
+        when(eventHubConsumerAsyncClientConfig.getAntiPatternMessage()).thenReturn("Use of EventHubConsumerAsyncClient detected. Use EventProcessorClient instead.");
 
-        when(mockTypeElement.getType()).thenReturn(mockType);
-        when(mockType.getPresentableText()).thenReturn(clientToCheck);
+        return Stream.of(
+            new TestCase("EventHubConsumerAsyncClient", "Use of EventHubConsumerAsyncClient detected. Use EventProcessorClient instead which provides a higher-level abstraction that simplifies event processing, making it the preferred choice for most developers.", 1, eventHubConsumerAsyncClientConfig),
+            new TestCase("EventProcessorClient", "", 0, eventHubConsumerAsyncClientConfig),
+            new TestCase("", "", 0, eventHubConsumerAsyncClientConfig)
+        );
     }
 
-    private static Stream<TestCase> provideTestCases() {
+    private static Stream<TestCase> provideServiceBusReceiverAsyncClientTestCases() {
         RuleConfig serviceBusReceiverAsyncClientConfig = mock(RuleConfig.class);
         when(serviceBusReceiverAsyncClientConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("ServiceBusReceiverAsyncClient"));
         when(serviceBusReceiverAsyncClientConfig.getAntiPatternMessage()).thenReturn("Use of ServiceBusReceiverAsyncClient detected. Use ServiceBusProcessorClient instead.");
 
-        RuleConfig eventHubConsumerAsyncClientConfig = mock(RuleConfig.class);
-        when(eventHubConsumerAsyncClientConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("EventHubConsumerAsyncClient"));
-        when(eventHubConsumerAsyncClientConfig.getAntiPatternMessage()).thenReturn("Use of EventHubConsumerAsyncClient detected. Use EventProcessorClient instead which provides a higher-level abstraction that simplifies event processing, making it the preferred choice for most developers.");
-
         return Stream.of(
             new TestCase("ServiceBusReceiverAsyncClient", "Use of ServiceBusReceiverAsyncClient detected. Use ServiceBusProcessorClient instead.", 1, serviceBusReceiverAsyncClientConfig),
-            new TestCase("EventHubConsumerAsyncClient", "Use of EventHubConsumerAsyncClient detected. Use EventProcessorClient instead which provides a higher-level abstraction that simplifies event processing, making it the preferred choice for most developers.", 1, eventHubConsumerAsyncClientConfig),
             new TestCase("ServiceBusProcessorClient", "", 0, serviceBusReceiverAsyncClientConfig),
             new TestCase("", "", 0, serviceBusReceiverAsyncClientConfig)
         );
+    }
+
+    private void setupMockElement(PsiTypeElement typeElement, int numberOfInvocations, String clientToCheck, String suggestionMessage) {
+        PsiClassType mockType = mock(PsiClassType.class);
+        PsiClass mockClass = mock(PsiClass.class);
+        when(typeElement.getType()).thenReturn(mockType);
+        when(mockType.resolve()).thenReturn(mockClass);
+        when(mockClass.getQualifiedName()).thenReturn("com.azure");
+        when(mockClass.getName()).thenReturn(clientToCheck);
     }
 
     private static class TestCase {

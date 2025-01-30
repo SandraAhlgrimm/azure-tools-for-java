@@ -4,6 +4,7 @@
 package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
 import com.intellij.psi.PsiClassType;
+import com.intellij.psi.PsiElement;
 import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor;
 
 import com.intellij.codeInspection.ProblemsHolder;
@@ -26,28 +27,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * This class is used to test the UseOfBlockOnAsyncClientsCheck class.
- * The UseOfBlockOnAsyncClientsCheck class is an inspection tool that checks for the use of blocking method on async clients in Azure SDK.
- * This inspection will check for the use of blocking method on reactive types like Mono, Flux, etc.
- *  This is an example of what should be flagged:
- *
- *  private ServiceBusReceiverAsyncClient receiver;
- *  receiver.complete(received).block(Duration.ofSeconds(15));
- *
- *  private final ServiceBusReceiverAsyncClient client;
- *  try {
- *                 if (isComplete) {
- *                     client.complete(message)
- *                         .doOnSuccess(success -> System.out.println("Message completed successfully"))
- *                         .doOnError(error -> System.err.println("Error completing message: " + error.getMessage()))
- *                         .log()
- *                         .timeout(Duration.ofSeconds(30))
- *                         .retry(3)
- *                         .block();
- *
- *                 } else {
- *                     client.abandon(message).block();
- *                 }
+ * This class is used to test the UseOfBlockOnAsyncClientsCheck class. The UseOfBlockOnAsyncClientsCheck class is an
+ * inspection tool that checks for the use of blocking method on async clients in Azure SDK. This inspection will check
+ * for the use of blocking method on reactive types like Mono, Flux, etc. This is an example of what should be flagged:
+ * <p>
+ * private ServiceBusReceiverAsyncClient receiver; receiver.complete(received).block(Duration.ofSeconds(15));
+ * <p>
+ * private final ServiceBusReceiverAsyncClient client; try { if (isComplete) { client.complete(message)
+ * .doOnSuccess(success -> System.out.println("Message completed successfully")) .doOnError(error ->
+ * System.err.println("Error completing message: " + error.getMessage())) .log() .timeout(Duration.ofSeconds(30))
+ * .retry(3) .block();
+ * <p>
+ * } else { client.abandon(message).block(); }
  */
 public class UseOfBlockOnAsyncClientsCheckTest {
 
@@ -60,11 +51,15 @@ public class UseOfBlockOnAsyncClientsCheckTest {
     @Mock
     private PsiMethodCallExpression mockElement;
 
+    @Mock
+    private PsiElement problemElement;
+
     @BeforeEach
     public void setup() {
         mockHolder = mock(ProblemsHolder.class);
         mockVisitor = createVisitor();
         mockElement = mock(PsiMethodCallExpression.class);
+        problemElement = mock(PsiElement.class);
     }
 
     @ParameterizedTest
@@ -74,16 +69,17 @@ public class UseOfBlockOnAsyncClientsCheckTest {
             testCase.reactivePackageName);
         mockVisitor.visitMethodCallExpression(mockElement);
 
-        verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(mockElement),
-            Mockito.contains(
-            "Use of block methods on asynchronous clients detected. Switch to synchronous APIs instead."));
+        verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(problemElement),
+            Mockito.eq(
+                "Use of block methods on asynchronous clients detected. Switch to synchronous APIs instead."));
     }
 
     private JavaElementVisitor createVisitor() {
         return new UseOfBlockOnAsyncClientsVisitor(mockHolder);
     }
 
-    private void setupMockMethodCallExpression(String methodName, String clientPackageName, int numberOfInvocations, String reactivePackageName) {
+    private void setupMockMethodCallExpression(String methodName, String clientPackageName, int numberOfInvocations,
+        String reactivePackageName) {
         PsiReferenceExpression referenceExpression = mock(PsiReferenceExpression.class);
         PsiMethodCallExpression expression = mock(PsiMethodCallExpression.class);
         PsiClassType type = mock(PsiClassType.class);
@@ -108,17 +104,21 @@ public class UseOfBlockOnAsyncClientsCheckTest {
         when(clientQualifierExpression.getType()).thenReturn(clientType);
         when(clientType.resolve()).thenReturn(clientReturnTypeClass);
         when(clientReturnTypeClass.getQualifiedName()).thenReturn(clientPackageName);
-
-         }
+        when(referenceExpression.getReferenceNameElement()).thenReturn(problemElement);
+    }
 
     private static Stream<TestCase> provideTestCases() {
         return Stream.of(
-            new TestCase("block", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 1, "reactor.core.publisher.Flux"),
-            new TestCase("blockOptional", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 1, "reactor.core.publisher.Mono"),
+            new TestCase("block", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 1,
+                "reactor.core.publisher.Flux"),
+            new TestCase("blockOptional", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 1,
+                "reactor.core.publisher.Mono"),
             new TestCase("blockFirst", "com.notAzure.", 0, "reactor.core.publisher.Flux"),
-            new TestCase("nonBlockingMethod", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 0, "reactor.core.publisher.Flux"),
+            new TestCase("nonBlockingMethod", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 0,
+                "reactor.core.publisher.Flux"),
             new TestCase("block", "com.azure.messaging.servicebus.ServiceBusReceiverAsyncClient", 0, "java.util.List"),
-            new TestCase("block", "com.azure.messaging.servicebus.ServiceBusReceiverClient", 0, "reactor.core.publisher.Mono")
+            new TestCase("block", "com.azure.messaging.servicebus.ServiceBusReceiverClient", 0,
+                "reactor.core.publisher.Mono")
         );
     }
 

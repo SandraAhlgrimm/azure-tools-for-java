@@ -15,6 +15,7 @@ import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiVariable;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,21 +46,24 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
      */
     static class DisableAutoCompleteVisitor extends JavaElementVisitor {
 
-        private static final RuleConfig RULE_CONFIG;
+        private static RuleConfig RULE_CONFIG;
         private static boolean SKIP_WHOLE_RULE;
         private final ProblemsHolder holder;
 
-        static {
-            final String ruleName = "DisableAutoCompleteCheck";
-            RuleConfigLoader centralRuleConfigLoader = RuleConfigLoader.getInstance();
-            RULE_CONFIG = centralRuleConfigLoader.getRuleConfig(ruleName);
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-        }
 
         DisableAutoCompleteVisitor(ProblemsHolder holder) {
             this.holder = holder;
+            initializeRuleConfig();
         }
 
+        private void initializeRuleConfig() {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "DisableAutoCompleteCheck";
+                RuleConfigLoader centralRuleConfigLoader = RuleConfigLoader.getInstance();
+                RULE_CONFIG = centralRuleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
+        }
         /**
          * This method is used to visit the declaration statements in the code. It checks for the declaration of Azure
          * SDK ServiceBusReceiver & ServiceBusProcessor clients and whether the auto-complete feature is disabled. If
@@ -103,20 +107,13 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
             PsiExpression initializer = variable.getInitializer();
 
             // Check if the client type is an Azure SDK client
-            if (!clientType.getCanonicalText().startsWith(RuleConfig.AZURE_PACKAGE_NAME)) {
-                return;
-            }
-
-            // Check if the client type is in the list of clients to check
-            if (RULE_CONFIG.getScopeToCheck().contains(clientType.getPresentableText())) {
-
-                if (!(initializer instanceof PsiMethodCallExpression)) {
-                    return;
-                }
-                // Process the new expression initialization
-                if (!isAutoCompleteDisabled((PsiMethodCallExpression) initializer)) {
-                    // Register a problem if the auto-complete feature is not disabled
-                    holder.registerProblem(initializer, RULE_CONFIG.getAntiPatternMessage());
+            if (HelperUtils.isAzurePackage(clientType.getCanonicalText())) {
+                if (HelperUtils.checkIfInScope(RULE_CONFIG.getScopeToCheck(), clientType.getPresentableText())) {
+                    if (initializer instanceof PsiMethodCallExpression) {
+                        if (!isAutoCompleteDisabled((PsiMethodCallExpression) initializer)) {
+                            holder.registerProblem(initializer, RULE_CONFIG.getAntiPatternMessage());
+                        }
+                    }
                 }
             }
         }

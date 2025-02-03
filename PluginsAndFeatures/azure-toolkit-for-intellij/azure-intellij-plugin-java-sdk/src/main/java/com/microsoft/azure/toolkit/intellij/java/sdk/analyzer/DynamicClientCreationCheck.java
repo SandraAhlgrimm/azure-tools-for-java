@@ -5,7 +5,19 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.psi.*;
+import com.intellij.psi.JavaElementVisitor;
+import com.intellij.psi.PsiAssignmentExpression;
+import com.intellij.psi.PsiBlockStatement;
+import com.intellij.psi.PsiCodeBlock;
+import com.intellij.psi.PsiDeclarationStatement;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiExpression;
+import com.intellij.psi.PsiExpressionStatement;
+import com.intellij.psi.PsiForStatement;
+import com.intellij.psi.PsiLocalVariable;
+import com.intellij.psi.PsiMethodCallExpression;
+import com.intellij.psi.PsiReferenceExpression;
+import com.intellij.psi.PsiStatement;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
@@ -19,18 +31,26 @@ public class DynamicClientCreationCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public JavaElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new DynamicClientCreationVisitor(holder);
+        return new DynamicClientCreationVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     static class DynamicClientCreationVisitor extends JavaElementVisitor {
 
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG = RuleConfigLoader.getInstance()
-            .getRuleConfig("DynamicClientCreationCheck");
-        private static final boolean SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        public DynamicClientCreationVisitor(ProblemsHolder holder) {
+        public DynamicClientCreationVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
+        }
+
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "DynamicClientCreationCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         @Override

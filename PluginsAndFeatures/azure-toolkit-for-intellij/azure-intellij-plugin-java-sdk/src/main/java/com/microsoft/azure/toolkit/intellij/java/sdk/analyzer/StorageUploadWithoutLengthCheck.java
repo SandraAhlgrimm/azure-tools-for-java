@@ -31,7 +31,7 @@ public class StorageUploadWithoutLengthCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new StorageUploadVisitor(holder);
+        return new StorageUploadVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     /**
@@ -40,21 +40,22 @@ public class StorageUploadWithoutLengthCheck extends LocalInspectionTool {
     static class StorageUploadVisitor extends JavaRecursiveElementWalkingVisitor {
         private static final String LENGTH_TYPE = "long";
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
-        private static final List<String> SCOPE_TO_CHECK;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        static {
-            RuleConfigLoader configLoader = RuleConfigLoader.getInstance();
-            RULE_CONFIG = configLoader.getRuleConfig("StorageUploadWithoutLengthCheck");
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-            SCOPE_TO_CHECK = RULE_CONFIG.getScopeToCheck();
-        }
 
-        StorageUploadVisitor(ProblemsHolder holder) {
+        StorageUploadVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "StorageUploadWithoutLengthCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
+        }
         @Override
         public void visitMethodCallExpression(PsiMethodCallExpression expression) {
             super.visitMethodCallExpression(expression);
@@ -84,7 +85,7 @@ public class StorageUploadWithoutLengthCheck extends LocalInspectionTool {
                 return false;
             }
 
-            return SCOPE_TO_CHECK.stream()
+            return RULE_CONFIG.getScopeToCheck().stream()
                 .anyMatch(scope -> containingClass.getQualifiedName().startsWith(scope));
         }
 

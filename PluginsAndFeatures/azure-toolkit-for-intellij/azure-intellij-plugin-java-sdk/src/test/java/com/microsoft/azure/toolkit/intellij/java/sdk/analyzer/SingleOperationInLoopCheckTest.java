@@ -21,13 +21,17 @@ import com.intellij.psi.PsiStatement;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiVariable;
 import com.intellij.psi.PsiWhileStatement;
-import com.intellij.psi.util.PsiTreeUtil;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -56,17 +60,28 @@ import static org.mockito.Mockito.when;
  * in enhanced for loop.")) .subscribe(); }
  */
 public class SingleOperationInLoopCheckTest {
-    private static final String PROBLEM_DESCRIPTION = "This SDK provides a batch operation API, use it to perform multiple actions in a single request. Consider using %sBatch instead.";
-
+    private static final String SUGGESTION_MESSAGE = "Individual operations performed in a loop detected. This SDK provides a batch operation API, use it to perform multiple actions in a single request.";
     @Mock
     private ProblemsHolder mockHolder;
     private JavaElementVisitor mockVisitor;
     private PsiMethodCallExpression initializer;
     private PsiMethodCallExpression expression;
 
+    @Mock private RuleConfigLoader mockRuleConfigLoader;
+    @Mock private RuleConfig mockRuleConfig;
+
     @BeforeEach
     public void setup() {
+        MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
+        // Set up mock rule config
+        when(mockRuleConfigLoader.getRuleConfig("SingleOperationInLoopTextAnalyticsCheck")).thenReturn(mockRuleConfig);
+        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("detectLanguageBatch",
+            "recognizeEntitiesBatch, recognizePiiEntitiesBatch, recognizeLinkedEntitiesBatch",
+            "extractKeyPhrasesBatch", "analyzeSentimentBatch"));
+        when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.singletonList("com.azure.ai.textanalytics"));
         mockVisitor = createVisitor();
         initializer = mock(PsiMethodCallExpression.class);
         expression = mock(PsiMethodCallExpression.class);
@@ -75,21 +90,22 @@ public class SingleOperationInLoopCheckTest {
     @ParameterizedTest
     @MethodSource("provideTestCases")
     public void testSingleOperationInLoop(TestCase testCase) {
+        String expectedMessage = SUGGESTION_MESSAGE + " Consider using " + testCase.methodName + "Batch instead.";
         if (testCase.isDeclaration) {
             setupWithSinglePsiDeclarationStatement(testCase.loopStatement, testCase.packageName,
                 testCase.numberOfInvocations, testCase.methodName);
             verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(initializer),
-                Mockito.eq(String.format(PROBLEM_DESCRIPTION, testCase.methodName)));
+                Mockito.eq(expectedMessage));
         } else {
             setupWithSinglePsiExpressionStatement(testCase.loopStatement, testCase.packageName,
                 testCase.numberOfInvocations, testCase.methodName);
             verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(expression),
-                Mockito.eq(String.format(PROBLEM_DESCRIPTION, testCase.methodName)));
+                Mockito.eq(expectedMessage));
         }
     }
 
     private JavaElementVisitor createVisitor() {
-        return new SingleOperationInLoopTextAnalyticsCheck.SingleOperationInLoopVisitor(mockHolder);
+        return new SingleOperationInLoopTextAnalyticsCheck.SingleOperationInLoopVisitor(mockHolder, mockRuleConfigLoader);
     }
 
     private void setupWithSinglePsiExpressionStatement(PsiStatement loopStatement, String packageName,

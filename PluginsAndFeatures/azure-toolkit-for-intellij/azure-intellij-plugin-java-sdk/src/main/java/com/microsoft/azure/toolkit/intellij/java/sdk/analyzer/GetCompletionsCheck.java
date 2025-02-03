@@ -13,11 +13,7 @@ import com.intellij.psi.PsiMethodCallExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
-import java.util.HashSet;
-import java.util.Set;
 import org.jetbrains.annotations.NotNull;
-
-import static com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils.checkIfInUsages;
 
 /**
  * Inspection tool to check discouraged GetCompletions API usage in openai package context.
@@ -26,22 +22,25 @@ public class GetCompletionsCheck extends LocalInspectionTool {
 
     @Override
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new GetCompletionsVisitor(holder);
+        return new GetCompletionsCheck.GetCompletionsVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     static class GetCompletionsVisitor extends JavaElementVisitor {
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        GetCompletionsVisitor(ProblemsHolder holder) {
+        GetCompletionsVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
-        static {
-            RuleConfigLoader ruleConfigLoader = RuleConfigLoader.getInstance();
-            RULE_CONFIG = ruleConfigLoader.getRuleConfig("GetCompletionsCheck");
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "GetCompletionsCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         // visit all methodcalls

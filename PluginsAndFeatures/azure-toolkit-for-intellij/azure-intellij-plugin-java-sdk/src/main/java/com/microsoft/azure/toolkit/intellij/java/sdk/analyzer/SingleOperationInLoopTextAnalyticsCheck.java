@@ -52,7 +52,7 @@ public class SingleOperationInLoopTextAnalyticsCheck extends LocalInspectionTool
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new SingleOperationInLoopVisitor(holder);
+        return new SingleOperationInLoopVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     /**
@@ -62,23 +62,21 @@ public class SingleOperationInLoopTextAnalyticsCheck extends LocalInspectionTool
      * a batch alternative, a problem will be registered.
      */
     static class SingleOperationInLoopVisitor extends JavaElementVisitor {
-
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
-        private static final List<String> SCOPE_TO_CHECK;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        static {
-            final String ruleName = "SingleOperationInLoopTextAnalyticsCheck";
-            RuleConfigLoader centralRuleConfigLoader = RuleConfigLoader.getInstance();
-
-            RULE_CONFIG = centralRuleConfigLoader.getRuleConfig(ruleName);
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-            SCOPE_TO_CHECK = RULE_CONFIG.getScopeToCheck();
+        public SingleOperationInLoopVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+            this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
-        public SingleOperationInLoopVisitor(ProblemsHolder holder) {
-            this.holder = holder;
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "SingleOperationInLoopTextAnalyticsCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         @Override
@@ -171,7 +169,7 @@ public class SingleOperationInLoopTextAnalyticsCheck extends LocalInspectionTool
                 PsiType qualifierType = qualifierExpression.getType();
                 if (qualifierType != null) {
                     String qualifiedTypeName = qualifierType.getCanonicalText();
-                    if (qualifiedTypeName != null && SCOPE_TO_CHECK.stream().anyMatch(qualifiedTypeName::startsWith)) {
+                    if (qualifiedTypeName != null && RULE_CONFIG.getScopeToCheck().stream().anyMatch(qualifiedTypeName::startsWith)) {
                         String methodName = methodCall.getMethodExpression().getReferenceName();
                         return RULE_CONFIG.getUsagesToCheck().contains(methodName + "Batch");
                     }

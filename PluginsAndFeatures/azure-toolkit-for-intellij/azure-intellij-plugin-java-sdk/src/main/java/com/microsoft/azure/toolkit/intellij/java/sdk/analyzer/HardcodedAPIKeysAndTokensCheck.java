@@ -37,7 +37,7 @@ public class HardcodedAPIKeysAndTokensCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new APIKeysAndTokensVisitor(holder);
+        return new APIKeysAndTokensVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     /**
@@ -46,19 +46,21 @@ public class HardcodedAPIKeysAndTokensCheck extends LocalInspectionTool {
     static class APIKeysAndTokensVisitor extends JavaElementVisitor {
 
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        static {
-            RuleConfigLoader ruleConfigLoader = RuleConfigLoader.getInstance();
-            RULE_CONFIG = ruleConfigLoader.getRuleConfig("HardcodedAPIKeysAndTokensCheck");
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-        }
-
-        APIKeysAndTokensVisitor(ProblemsHolder holder) {
+        APIKeysAndTokensVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "HardcodedAPIKeysAndTokensCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
+        }
         @Override
         public void visitNewExpression(@NotNull PsiNewExpression newExpression) {
             PsiJavaCodeReferenceElement classReference = newExpression.getClassReference();

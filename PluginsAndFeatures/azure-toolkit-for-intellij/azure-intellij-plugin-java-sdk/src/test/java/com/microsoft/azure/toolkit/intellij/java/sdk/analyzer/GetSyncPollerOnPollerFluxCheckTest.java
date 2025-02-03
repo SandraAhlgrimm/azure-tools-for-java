@@ -13,11 +13,16 @@ import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -28,6 +33,8 @@ import static org.mockito.Mockito.when;
  * Unit tests for GetSyncPollerOnPollerFluxCheck.
  */
 public class GetSyncPollerOnPollerFluxCheckTest {
+    private static final String SUGGESTION_MESSAGE =
+        "`getSyncPoller()` API usage on a `PollerFlux` detected. Consider using a `SyncPoller` directly to handle synchronous polling tasks.";
 
     @Mock
     private ProblemsHolder mockHolder;
@@ -40,11 +47,20 @@ public class GetSyncPollerOnPollerFluxCheckTest {
 
     @Mock
     private PsiElement mockElement;
+    @Mock private RuleConfigLoader mockRuleConfigLoader;
+    @Mock private RuleConfig mockRuleConfig;
 
     @BeforeEach
-    public void setup() {
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
-        mockVisitor = new GetSyncPollerOnPollerFluxCheck().new GetSyncPollerOnPollerFluxVisitor(mockHolder);
+        // Set up mock rule config
+        when(mockRuleConfigLoader.getRuleConfig("GetSyncPollerOnPollerFluxCheck")).thenReturn(mockRuleConfig);
+        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("getSyncPoller"));
+        when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.emptyList());
+        mockVisitor = new GetSyncPollerOnPollerFluxCheck().new GetSyncPollerOnPollerFluxVisitor(mockHolder, mockRuleConfigLoader);
         mockMethodCallExpression = mock(PsiMethodCallExpression.class);
         mockElement = mock(PsiElement.class);
     }
@@ -54,8 +70,7 @@ public class GetSyncPollerOnPollerFluxCheckTest {
     public void testGetSyncPollerOnPollerFluxCheck(TestCase testCase) {
         mockMethodExpression(testCase.methodName, testCase.className, testCase.numberOfInvocations);
         mockVisitor.visitMethodCallExpression(mockMethodCallExpression);
-        verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(mockElement, "Use of getSyncPoller() on a " +
-            "PollerFlux detected. Directly use SyncPoller to handle synchronous polling tasks.");
+        verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(mockElement, SUGGESTION_MESSAGE);
     }
 
     private static Stream<TestCase> testCases() {

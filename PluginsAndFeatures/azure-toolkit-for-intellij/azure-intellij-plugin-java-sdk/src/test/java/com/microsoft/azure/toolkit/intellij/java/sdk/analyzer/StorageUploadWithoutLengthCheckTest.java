@@ -13,11 +13,16 @@ import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.util.PsiTypesUtil;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
@@ -43,6 +48,7 @@ import static org.mockito.Mockito.when;
  * 3. upload(data, false);
  */
 public class StorageUploadWithoutLengthCheckTest {
+    private static final String SUGGESTION_MESSAGE = "Azure Storage upload API without length parameter detected. Consider using upload API with length parameter instead.";
 
     @Mock
     private ProblemsHolder mockHolder;
@@ -50,11 +56,21 @@ public class StorageUploadWithoutLengthCheckTest {
     private JavaRecursiveElementWalkingVisitor mockVisitor;
     @Mock
     private PsiMethodCallExpression mockExpression;
+    @Mock private RuleConfigLoader mockRuleConfigLoader;
+    @Mock private RuleConfig mockRuleConfig;
 
     @BeforeEach
     public void setup() {
+        MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
-        mockVisitor = new StorageUploadWithoutLengthCheck.StorageUploadVisitor(mockHolder);
+        // Set up mock rule config
+        when(mockRuleConfigLoader.getRuleConfig("StorageUploadWithoutLengthCheck")).thenReturn(mockRuleConfig);
+        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("upload",
+            "uploadWithResponse"));
+        when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.singletonList("com.azure.storage."));
+        mockVisitor = new StorageUploadWithoutLengthCheck.StorageUploadVisitor(mockHolder, mockRuleConfigLoader);
         mockExpression = mock(PsiMethodCallExpression.class);
     }
 
@@ -63,8 +79,7 @@ public class StorageUploadWithoutLengthCheckTest {
     public void testStorageUploadWithoutLengthCheck(TestCase testCase) {
         setupStorageCall(testCase.methodName, testCase.numberOfInvocations);
         mockVisitor.visitMethodCallExpression(mockExpression);
-        verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(eq(mockExpression), contains("Azure " +
-            "Storage upload API without length parameter detected"));
+        verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(eq(mockExpression), contains(SUGGESTION_MESSAGE));
     }
 
     private void setupStorageCall(String methodName, int numberOfInvocations) {

@@ -3,6 +3,8 @@
 
 package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
+import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiAssignmentExpression;
 import com.intellij.psi.PsiBlockStatement;
 import com.intellij.psi.PsiCodeBlock;
@@ -12,13 +14,15 @@ import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiExpressionStatement;
 import com.intellij.psi.PsiForStatement;
 import com.intellij.psi.PsiLocalVariable;
+import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiStatement;
 import com.intellij.psi.PsiType;
-import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.psi.JavaElementVisitor;
-import com.intellij.psi.PsiMethodCallExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.DynamicClientCreationCheck.DynamicClientCreationVisitor;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,7 +30,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -37,6 +40,9 @@ import static org.mockito.Mockito.when;
  * Tests for {@link DynamicClientCreationCheck}
  */
 public class DynamicClientCreationCheckTest {
+    private static final String SUGGESTION_MESSAGE =
+        "A new client instance is being created dynamically. For better performance and resource management, consider" +
+            " creating a single instance and reusing it.";
 
     @Mock
     private ProblemsHolder mockHolder;
@@ -49,12 +55,20 @@ public class DynamicClientCreationCheckTest {
 
     @Mock
     private PsiMethodCallExpression mockMethodCallExpression;
+    @Mock private RuleConfigLoader mockRuleConfigLoader;
+    @Mock private RuleConfig mockRuleConfig;
 
     @BeforeEach
     public void setup() {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
-        mockVisitor = new DynamicClientCreationVisitor(mockHolder);
+        // Set up mock rule config
+        when(mockRuleConfigLoader.getRuleConfig("DynamicClientCreationCheck")).thenReturn(mockRuleConfig);
+        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("buildClient", "buildAsyncClient"));
+        when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.emptyList());
+        mockVisitor = new DynamicClientCreationVisitor(mockHolder, mockRuleConfigLoader);
         mockElement = mock(PsiForStatement.class);
         mockMethodCallExpression = mock(PsiMethodCallExpression.class);
     }
@@ -67,13 +81,12 @@ public class DynamicClientCreationCheckTest {
             mockVisitor.visitForStatement(mockElement);
 
             verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockMethodCallExpression),
-                contains("Dynamic client creation detected. Create a single client instance and reuse it instead."));
+                eq(SUGGESTION_MESSAGE));
         } else {
             setupWithDeclarationStatement(testCase.methodName, testCase.packageName, testCase.numOfInvocations);
             mockVisitor.visitForStatement(mockElement);
 
-            verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockMethodCallExpression), contains("Dynamic " +
-                "client creation detected. Create a single client instance and reuse it instead."));
+            verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockMethodCallExpression), eq(SUGGESTION_MESSAGE));
         }
     }
 

@@ -13,7 +13,6 @@ import com.intellij.psi.PsiReferenceExpression;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiTypeElement;
 import com.intellij.psi.PsiWhiteSpace;
-import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import java.util.List;
 
 /*
@@ -30,7 +29,7 @@ public class HelperUtils {
      * @return True if the method call is following a `subscribe` method call, false otherwise.
      */
     public static boolean isFollowedBySubscribe(PsiMethodCallExpression expression) {
-        if (expression == null || !expression.isValid()) {
+        if (expression == null) {
             return false;
         }
 
@@ -113,30 +112,20 @@ public class HelperUtils {
         return false;
     }
 
+    /**
+     * Checks if the class qualified name is an Azure package.
+     * @param classQualifiedName The qualified name of the class.
+     * @return True if the class is in an Azure package, false otherwise.
+     */
     public static boolean isAzurePackage(String classQualifiedName) {
         return classQualifiedName.startsWith(AZURE_PACKAGE_NAME);
     }
 
-    public static String getContainingClassOfMethod(PsiMethod method) {
-        if (method == null) {
-            return null;
-        }
-
-        // Get the containing class of the method
-        PsiClass containingClass = method.getContainingClass();
-        if (containingClass == null) {
-            return null;
-        }
-
-        // Get qualified name of the containing class
-        String classQualifiedName = containingClass.getQualifiedName();
-        if (classQualifiedName == null) {
-            return null;
-        }
-        return classQualifiedName;
-
-    }
-
+    /**
+     * Get the resolved method from a method call expression.
+     * @param element The method call expression.
+     * @return The resolved method, or null if the method is not resolved.
+     */
     public static PsiMethod getResolvedMethod(PsiElement element) {
         // Ensure the element is a method call
         if (!(element instanceof PsiMethodCallExpression methodCallExpression)) {
@@ -152,6 +141,12 @@ public class HelperUtils {
         return method;
     }
 
+    /**
+     * Checks if the method is in the list of usages.
+     * @param usages The list of usages.
+     * @param methodName The name of the method to check.
+     * @return True if the method is in the list of usages, false otherwise.
+     */
     public static boolean checkIfInUsages(List<String> usages, String methodName) {
         if (usages.isEmpty()) {
             return true;
@@ -159,6 +154,12 @@ public class HelperUtils {
         return usages.stream().anyMatch(usage -> usage.equals(methodName));
     }
 
+    /**
+     * Checks if the class qualified name is in the list of scopes.
+     * @param scope The list of scopes.
+     * @param classQualifiedName The qualified name of the class to check.
+     * @return True if the class is in the list of scopes, false otherwise.
+     */
     public static boolean checkIfInScope(List<String> scope, String classQualifiedName) {
         if (scope.isEmpty()) {
             return true;
@@ -166,7 +167,17 @@ public class HelperUtils {
         return scope.stream().anyMatch(classQualifiedName::contains);
     }
 
+    /**
+     * Checks if the method is a discouraged API.
+     * @param method The method to check.
+     * @param usages The list of usages.
+     * @param scopes The list of scopes.
+     * @return True if the method is a discouraged API, false otherwise.
+     */
     public static boolean isItDiscouragedAPI(PsiMethod method, List<String> usages, List<String> scopes) {
+        if (method == null) {
+            return false;
+        }
 
         // Check if the method is a discouraged API
         String methodName = method.getName();
@@ -189,6 +200,12 @@ public class HelperUtils {
         return checkIfInScope(scopes, classQualifiedName);
     }
 
+    /**
+     * Checks if the element is a discouraged client.
+     * @param element The element to check.
+     * @param usages The list of usages.
+     * @return True if the element is a discouraged client, false otherwise.
+     */
     public static boolean isItDiscouragedClient(PsiTypeElement element, List<String> usages) {
         PsiType psiType = element.getType();
         if (psiType instanceof PsiClassType) {
@@ -201,5 +218,25 @@ public class HelperUtils {
             }
         }
         return false;
+    }
+
+    private static String getContainingClassOfMethod(PsiMethod method) {
+        if (method == null) {
+            return null;
+        }
+
+        // Get the containing class of the method
+        PsiClass containingClass = method.getContainingClass();
+        if (containingClass == null) {
+            return null;
+        }
+
+        // Get qualified name of the containing class
+        String classQualifiedName = containingClass.getQualifiedName();
+        if (classQualifiedName == null) {
+            return null;
+        }
+        return classQualifiedName;
+
     }
 }

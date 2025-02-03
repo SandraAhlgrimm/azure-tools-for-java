@@ -6,6 +6,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity
                 implementation="com.microsoft.azure.toolkit.intellij.java.sdk.MavenProjectReportGenerator"/>
+        <postStartupActivity implementation="com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoaderInitializer"/>
         <localInspection
                 language="JAVA"
                 shortName="ConnectionStringCheck"
@@ -93,7 +94,7 @@
                 displayName="Storage upload without length check"
                 groupName="Azure SDK Rules"
                 enabledByDefault="true"
-                level="INFO"
+                level="WARNING"
                 implementationClass="com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.StorageUploadWithoutLengthCheck">
         </localInspection>
         <localInspection

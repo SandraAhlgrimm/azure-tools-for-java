@@ -22,22 +22,25 @@ public class ConnectionStringCheck extends LocalInspectionTool {
 
     @Override
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new ConnectionStringCheckVisitor(holder);
+        return new ConnectionStringCheckVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     static class ConnectionStringCheckVisitor extends JavaElementVisitor {
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        ConnectionStringCheckVisitor(ProblemsHolder holder) {
+        ConnectionStringCheckVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
-        static {
-            RuleConfigLoader ruleConfigLoader = RuleConfigLoader.getInstance();
-            RULE_CONFIG = ruleConfigLoader.getRuleConfig("ConnectionStringCheck");
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "ConnectionStringCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         @Override

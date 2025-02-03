@@ -11,12 +11,17 @@ import com.intellij.psi.PsiExpressionList;
 import com.intellij.psi.PsiJavaCodeReferenceElement;
 import com.intellij.psi.PsiLiteralExpression;
 import com.intellij.psi.PsiNewExpression;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -40,17 +45,38 @@ import static org.mockito.Mockito.when;
 public class HardcodedAPIKeysAndTokensCheckTest {
 
     private static final String SUGGESTION_MESSAGE =
-        "DefaultAzureCredential is recommended for authentication if the service client supports Token Credential (Entra ID Authentication). If not, then use environment variables when using key based authentication.";
+        "`DefaultAzureCredential` is recommended for authentication if the service client supports Token Credential (Entra ID Authentication). If not, then use environment variables when using key based authentication.";
     @Mock
     private ProblemsHolder mockHolder;
 
     @Mock
     private JavaElementVisitor mockVisitor;
 
+    @Mock
+    private RuleConfig mockRuleConfig;
+    private PsiElement problemElement;
+    @Mock
+    private RuleConfigLoader mockRuleConfigLoader;
+
     @BeforeEach
-    public void setup() {
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
-        mockVisitor = new HardcodedAPIKeysAndTokensCheck.APIKeysAndTokensVisitor(mockHolder);
+        // Set up mock rule config
+        when(mockRuleConfigLoader.getRuleConfig("HardcodedAPIKeysAndTokensCheck")).thenReturn(mockRuleConfig);
+        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("AzureKeyCredential",
+            "AccessToken",
+            "KeyCredential",
+            "AzureNamedKeyCredential",
+            "AzureSasCredential",
+            "AzureNamedKey",
+            "ClientSecretCredentialBuilder",
+            "UsernamePasswordCredentialBuilder",
+            "BasicAuthenticationCredential"));
+        when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.emptyList());
+        mockVisitor = new HardcodedAPIKeysAndTokensCheck.APIKeysAndTokensVisitor(mockHolder, mockRuleConfigLoader);
     }
 
     @ParameterizedTest
@@ -72,7 +98,7 @@ public class HardcodedAPIKeysAndTokensCheckTest {
 
         when(newExpression.getClassReference()).thenReturn(javaCodeReferenceElement);
         when(javaCodeReferenceElement.getReferenceName()).thenReturn("AzureKeyCredential");
-        when(javaCodeReferenceElement.getQualifiedName()).thenReturn("com.azure");
+        when(javaCodeReferenceElement.getQualifiedName()).thenReturn("com.azure.");
         when(newExpression.getChildren()).thenReturn(new PsiElement[]{literalExpression});
         when(literalExpression.getValue()).thenReturn(System.getenv());
 
@@ -102,7 +128,7 @@ public class HardcodedAPIKeysAndTokensCheckTest {
 
         when(newExpression.getClassReference()).thenReturn(javaCodeReferenceElement);
         when(javaCodeReferenceElement.getReferenceName()).thenReturn(authServiceToCheck);
-        when(javaCodeReferenceElement.getQualifiedName()).thenReturn("com.azure");
+        when(javaCodeReferenceElement.getQualifiedName()).thenReturn("com.azure.");
         when(newExpression.getChildren()).thenReturn(new PsiElement[]{expressionList});
         when(expressionList.getExpressions()).thenReturn(new PsiExpression[]{literalExpression});
         when(literalExpression.getValue()).thenReturn(credentialString);

@@ -39,7 +39,7 @@ public class GetSyncPollerOnPollerFluxCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public JavaElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new GetSyncPollerOnPollerFluxVisitor(holder);
+        return new GetSyncPollerOnPollerFluxVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     /**
@@ -49,26 +49,26 @@ public class GetSyncPollerOnPollerFluxCheck extends LocalInspectionTool {
     class GetSyncPollerOnPollerFluxVisitor extends JavaElementVisitor {
 
         private final ProblemsHolder holder;
-
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
-
-        static {
-            final String ruleName = "GetSyncPollerOnPollerFluxCheck";
-            RuleConfigLoader centralRuleConfigLoader = RuleConfigLoader.getInstance();
-
-            // Get the RuleConfig object for the rule
-            RULE_CONFIG = centralRuleConfigLoader.getRuleConfig(ruleName);
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-        }
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
         /**
          * Constructor to initialize the visitor with the holder and isOnTheFly flag.
          *
          * @param holder Holder for the problems found by the inspection
+         * @param ruleConfigLoader RuleConfigLoader object to load the rule configuration
          */
-        public GetSyncPollerOnPollerFluxVisitor(ProblemsHolder holder) {
+        public GetSyncPollerOnPollerFluxVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
+        }
+
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "GetSyncPollerOnPollerFluxCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         /**

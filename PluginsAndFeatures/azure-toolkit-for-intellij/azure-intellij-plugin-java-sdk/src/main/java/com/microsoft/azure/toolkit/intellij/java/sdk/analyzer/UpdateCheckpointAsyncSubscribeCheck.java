@@ -33,7 +33,7 @@ public class UpdateCheckpointAsyncSubscribeCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new UpdateCheckpointAsyncVisitor(holder);
+        return new UpdateCheckpointAsyncVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     /**
@@ -43,25 +43,26 @@ public class UpdateCheckpointAsyncSubscribeCheck extends LocalInspectionTool {
      */
     static class UpdateCheckpointAsyncVisitor extends JavaElementVisitor {
 
-        // Define the holder to register problems
         private final ProblemsHolder holder;
-
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
         /**
          * Constructor to initialize the visitor with the holder.
          *
          * @param holder ProblemsHolder to register problems
          */
-        UpdateCheckpointAsyncVisitor(ProblemsHolder holder) {
+        UpdateCheckpointAsyncVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
             this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
-        static {
-            RuleConfigLoader ruleConfigLoader = RuleConfigLoader.getInstance();
-            RULE_CONFIG = ruleConfigLoader.getRuleConfig("UpdateCheckpointAsyncSubscribeCheck");
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "UpdateCheckpointAsyncSubscribeCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         /**

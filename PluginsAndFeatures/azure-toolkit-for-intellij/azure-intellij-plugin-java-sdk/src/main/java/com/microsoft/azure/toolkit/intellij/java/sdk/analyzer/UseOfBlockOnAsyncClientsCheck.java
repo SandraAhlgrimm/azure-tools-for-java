@@ -25,32 +25,31 @@ import org.jetbrains.annotations.Nullable;
  */
 public class UseOfBlockOnAsyncClientsCheck extends LocalInspectionTool {
 
-    private static final String RULE_NAME = "UseOfBlockOnAsyncClientsCheck";
-    private static final RuleConfig RULE_CONFIG = RuleConfigLoader.getInstance().getRuleConfig(RULE_NAME);
-    private static final boolean SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-
     @NotNull
     @Override
     public JavaElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new UseOfBlockOnAsyncClientsVisitor(holder);
+        return new UseOfBlockOnAsyncClientsVisitor(holder, RuleConfigLoader.getInstance());
     }
 
     /**
      * Visitor to check for the use of blocking methods on async clients in Azure SDK.
      */
     static class UseOfBlockOnAsyncClientsVisitor extends JavaElementVisitor {
-
         private final ProblemsHolder holder;
-        private static final RuleConfig RULE_CONFIG;
-        private static final boolean SKIP_WHOLE_RULE;
+        private static RuleConfig RULE_CONFIG;
+        private static boolean SKIP_WHOLE_RULE;
 
-        static {
-            RULE_CONFIG = RuleConfigLoader.getInstance().getRuleConfig("UseOfBlockOnAsyncClientsCheck");
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+        UseOfBlockOnAsyncClientsVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+            this.holder = holder;
+            initializeRuleConfig(ruleConfigLoader);
         }
 
-        UseOfBlockOnAsyncClientsVisitor(@NotNull ProblemsHolder holder) {
-            this.holder = holder;
+        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+            if (RULE_CONFIG == null) {
+                final String ruleName = "UseOfBlockOnAsyncClientsCheck";
+                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            }
         }
 
         /**

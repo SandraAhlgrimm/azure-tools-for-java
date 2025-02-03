@@ -36,7 +36,7 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new DisableAutoCompleteVisitor(holder);
+        return new DisableAutoCompleteVisitor(holder, RuleConfigLoader.getInstance());
     }
     
     /**
@@ -51,19 +51,18 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
         private final ProblemsHolder holder;
 
 
-        DisableAutoCompleteVisitor(ProblemsHolder holder) {
-            this.holder = holder;
-            initializeRuleConfig();
-        }
+    DisableAutoCompleteVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+        this.holder = holder;
+        initializeRuleConfig(ruleConfigLoader);
+    }
 
-        private void initializeRuleConfig() {
-            if (RULE_CONFIG == null) {
-                final String ruleName = "DisableAutoCompleteCheck";
-                RuleConfigLoader centralRuleConfigLoader = RuleConfigLoader.getInstance();
-                RULE_CONFIG = centralRuleConfigLoader.getRuleConfig(ruleName);
-                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
-            }
+    private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+        if (RULE_CONFIG == null) {
+            final String ruleName = "DisableAutoCompleteCheck";
+            RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
+            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
         }
+    }
         /**
          * This method is used to visit the declaration statements in the code. It checks for the declaration of Azure
          * SDK ServiceBusReceiver & ServiceBusProcessor clients and whether the auto-complete feature is disabled. If

@@ -20,21 +20,9 @@ import static com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig.EM
 public class RuleConfigLoader {
     private static final String CONFIG_FILE_PATH = "./META-INF/ruleConfigs.json";
     private static final Logger LOGGER = Logger.getLogger(RuleConfigLoader.class.getName());
-    private static final RuleConfigLoader INSTANCE;
+    private static RuleConfigLoader INSTANCE;
     private static boolean initializationFailed = false;
     private final Map<String, RuleConfig> ruleConfigs;
-
-    static {
-        RuleConfigLoader tempInstance;
-        try {
-            tempInstance = new RuleConfigLoader(CONFIG_FILE_PATH);
-        } catch (IOException e) {
-            tempInstance = null;
-            initializationFailed = true;
-            LOGGER.log(Level.SEVERE, "Failed to initialize RuleConfigLoader: " + e.getMessage(), e);
-        }
-        INSTANCE = tempInstance;
-    }
 
     private RuleConfigLoader() {
         this.ruleConfigs = new HashMap<>();
@@ -55,6 +43,19 @@ public class RuleConfigLoader {
             return new RuleConfigLoader();
         }
         return INSTANCE;
+    }
+
+    /**
+     * Initializes the RuleConfigLoader instance asynchronously.
+     */
+    public static void initialize() {
+        try {
+            INSTANCE = new RuleConfigLoader(CONFIG_FILE_PATH);
+        } catch (IOException e) {
+            INSTANCE = new RuleConfigLoader();
+            initializationFailed = true;
+            LOGGER.log(Level.SEVERE, "Failed to initialize RuleConfigLoader: " + e.getMessage(), e);
+        }
     }
 
     /**

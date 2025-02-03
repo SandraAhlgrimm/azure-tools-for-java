@@ -3,23 +3,24 @@
 
 package com.microsoft.azure.toolkit.intellij.java.sdk.analyzer;
 
-import com.intellij.psi.PsiClassType;
-import com.intellij.psi.PsiElement;
-import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor;
-
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.JavaElementVisitor;
 import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiClassType;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
-
+import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor;
+import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
+import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Arrays;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-
-import java.util.stream.Stream;
+import org.mockito.MockitoAnnotations;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -41,6 +42,8 @@ import static org.mockito.Mockito.when;
  * } else { client.abandon(message).block(); }
  */
 public class UseOfBlockOnAsyncClientsCheckTest {
+    private static final String SUGGESTION_MESSAGE = "Blocking calls detected on asynchronous clients. Consider using" +
+        " fully synchronous APIs instead.";
 
     @Mock
     private ProblemsHolder mockHolder;
@@ -54,10 +57,29 @@ public class UseOfBlockOnAsyncClientsCheckTest {
     @Mock
     private PsiElement problemElement;
 
+    @Mock private RuleConfigLoader mockRuleConfigLoader;
+    @Mock private RuleConfig mockRuleConfig;
+
     @BeforeEach
     public void setup() {
+        MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
-        mockVisitor = createVisitor();
+        // Set up mock rule config
+        when(mockRuleConfigLoader.getRuleConfig("UseOfBlockOnAsyncClientsCheck")).thenReturn(mockRuleConfig);
+        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("block",
+            "blockOptional",
+            "blockFirst",
+            "blockLast",
+            "toIterable",
+            "toStream",
+            "toFuture",
+            "blockFirstOptional",
+            "blockLastOptional"));
+        when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Arrays.asList("reactor.core.publisher.Flux",
+            "reactor.core.publisher.Mono"));
+        mockVisitor = new UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor(mockHolder, mockRuleConfigLoader);
         mockElement = mock(PsiMethodCallExpression.class);
         problemElement = mock(PsiElement.class);
     }
@@ -70,12 +92,7 @@ public class UseOfBlockOnAsyncClientsCheckTest {
         mockVisitor.visitMethodCallExpression(mockElement);
 
         verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(problemElement),
-            Mockito.eq(
-                "Use of block methods on asynchronous clients detected. Switch to synchronous APIs instead."));
-    }
-
-    private JavaElementVisitor createVisitor() {
-        return new UseOfBlockOnAsyncClientsVisitor(mockHolder);
+            Mockito.eq(SUGGESTION_MESSAGE));
     }
 
     private void setupMockMethodCallExpression(String methodName, String clientPackageName, int numberOfInvocations,

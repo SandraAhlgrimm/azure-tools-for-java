@@ -8,6 +8,7 @@ import com.intellij.psi.PsiTypeElement;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,11 +46,13 @@ public class EventHubConsumerAsyncClientCheckTest {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("EventHubConsumerAsyncClientCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("EventHubConsumerAsyncClient"));
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
         when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.emptyList());
+        Map<String, RuleConfig> mockRules = Map.of("EventHubConsumerAsyncClientCheck", mockRuleConfig);
+        mockVisitor =
+            new EventHubConsumerAsyncClientCheck.EventHubConsumerAsyncClientVisitor(mockHolder, mockRules);
 
         mockTypeElement = mock(PsiTypeElement.class);
     }
@@ -57,9 +60,8 @@ public class EventHubConsumerAsyncClientCheckTest {
     @ParameterizedTest
     @MethodSource("provideEventHubConsumerAsyncClientTestCases")
     void detectsEventHubConsumerAsyncClientUsage(TestCase testCase) {
-        JavaElementVisitor visitor =
-            new EventHubConsumerAsyncClientCheck.EventHubConsumerAsyncClientVisitor(mockHolder, mockRuleConfigLoader);     setupMockElement(mockTypeElement, testCase.numOfInvocations, testCase.usagesToCheck);
-        visitor.visitTypeElement(mockTypeElement);
+        setupMockElement(mockTypeElement, testCase.numOfInvocations, testCase.usagesToCheck);
+        mockVisitor.visitTypeElement(mockTypeElement);
         verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockTypeElement),
             eq(SUGGESTION_MESSAGE));
     }

@@ -23,6 +23,7 @@ import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -63,13 +64,13 @@ public class DynamicClientCreationCheckTest {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("DynamicClientCreationCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("buildClient", "buildAsyncClient"));
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
         when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.emptyList());
-        mockVisitor = new DynamicClientCreationVisitor(mockHolder, mockRuleConfigLoader);
         mockElement = mock(PsiForStatement.class);
+        Map<String, RuleConfig> mockRules = Map.of("DynamicClientCreationCheck", mockRuleConfig);
+        mockVisitor = new DynamicClientCreationVisitor(mockHolder, mockRules);
         mockMethodCallExpression = mock(PsiMethodCallExpression.class);
     }
 

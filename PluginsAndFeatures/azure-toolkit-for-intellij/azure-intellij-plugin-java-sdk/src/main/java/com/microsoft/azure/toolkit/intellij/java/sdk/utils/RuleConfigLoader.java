@@ -5,31 +5,30 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.startup.ProjectActivity;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
+import lombok.extern.slf4j.Slf4j;
 
-import static com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig.EMPTY_RULE;
-
-public class RuleConfigLoader {
-    private static final String CONFIG_FILE_PATH = "./META-INF/ruleConfigs.json";
-    private static final Logger LOGGER = Logger.getLogger(RuleConfigLoader.class.getName());
+@Slf4j
+public class RuleConfigLoader implements ProjectActivity {
+    private static final String CONFIG_FILE_PATH = "./ruleConfigs.json";
     private static RuleConfigLoader INSTANCE;
-    private static boolean initializationFailed = false;
-    private final Map<String, RuleConfig> ruleConfigs;
+    private Map<String, RuleConfig> ruleConfigs;
 
     private RuleConfigLoader() {
         this.ruleConfigs = new HashMap<>();
-    }
-
-    private RuleConfigLoader(String filePath) throws IOException {
-        this.ruleConfigs = loadRuleConfigurations(filePath);
     }
 
     /**
@@ -38,44 +37,38 @@ public class RuleConfigLoader {
      * @return The singleton instance of RuleConfigLoader.
      */
     public static RuleConfigLoader getInstance() {
-        if (initializationFailed) {
-            LOGGER.log(Level.WARNING, "RuleConfigLoader initialization failed. Returning default instance.");
-            return new RuleConfigLoader();
-        }
         return INSTANCE;
     }
 
-    /**
-     * Initializes the RuleConfigLoader instance asynchronously.
-     */
-    public static void initialize() {
-        try {
-            INSTANCE = new RuleConfigLoader(CONFIG_FILE_PATH);
-        } catch (IOException e) {
-            INSTANCE = new RuleConfigLoader();
-            initializationFailed = true;
-            LOGGER.log(Level.SEVERE, "Failed to initialize RuleConfigLoader: " + e.getMessage(), e);
-        }
+    @Nullable
+    @Override
+    public Object execute(@Nonnull Project project, @Nonnull Continuation<? super Unit> continuation) {
+        initialize();
+        return null;
     }
 
     /**
-     * Gets the rule configuration for the specified key.
+     * Get the rule configurations.
      *
-     * @param key The key of the rule configuration.
-     * @return The rule configuration for the specified key.
+     * @return the rule configurations
      */
-    public RuleConfig getRuleConfig(String key) {
-        if (initializationFailed) {
-            return EMPTY_RULE;
-        }
-        return ruleConfigs.getOrDefault(key, EMPTY_RULE);
+    public Map<String, RuleConfig> getRuleConfigs() {
+        return Collections.unmodifiableMap(ruleConfigs);
     }
 
-    private Map<String, RuleConfig> loadRuleConfigurations(String filePath) throws IOException {
-        InputStream configStream = getClass().getClassLoader().getResourceAsStream(filePath);
+    private void initialize(){
+        try {
+            this.ruleConfigs.putAll(this.loadRuleConfigurations());
+            INSTANCE = this;
+        } catch (IOException e) {
+            log.warn("Failed to initialize RuleConfigLoader: " + e.getMessage(), e);
+        }
+    }
+
+    private Map<String, RuleConfig> loadRuleConfigurations() throws IOException {
+        InputStream configStream = getClass().getClassLoader().getResourceAsStream(RuleConfigLoader.CONFIG_FILE_PATH);
         if (configStream == null) {
-            initializationFailed = true;
-            LOGGER.log(Level.WARNING, "Rule configuration file not found: " + filePath);
+            log.info("Rule configuration file not found: " + RuleConfigLoader.CONFIG_FILE_PATH);
             return new HashMap<>();
         }
 

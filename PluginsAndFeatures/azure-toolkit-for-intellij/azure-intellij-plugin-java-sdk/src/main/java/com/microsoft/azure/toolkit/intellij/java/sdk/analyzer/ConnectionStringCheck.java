@@ -13,6 +13,7 @@ import com.intellij.psi.PsiMethodCallExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -22,7 +23,7 @@ public class ConnectionStringCheck extends LocalInspectionTool {
 
     @Override
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new ConnectionStringCheckVisitor(holder, RuleConfigLoader.getInstance());
+        return new ConnectionStringCheckVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
 
     static class ConnectionStringCheckVisitor extends JavaElementVisitor {
@@ -30,16 +31,16 @@ public class ConnectionStringCheck extends LocalInspectionTool {
         private static RuleConfig RULE_CONFIG;
         private static boolean SKIP_WHOLE_RULE;
 
-        ConnectionStringCheckVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+        ConnectionStringCheckVisitor(ProblemsHolder holder, Map<String, RuleConfig> ruleConfigs) {
             this.holder = holder;
-            initializeRuleConfig(ruleConfigLoader);
+            initializeRuleConfig(ruleConfigs);
         }
 
-        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+        private void initializeRuleConfig(Map<String, RuleConfig> ruleConfigs) {
             if (RULE_CONFIG == null) {
                 final String ruleName = "ConnectionStringCheck";
-                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
-                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+                RULE_CONFIG = ruleConfigs.get(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.isSkipRuleCheck();
             }
         }
 

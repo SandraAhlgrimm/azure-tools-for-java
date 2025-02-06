@@ -10,10 +10,10 @@ import com.intellij.psi.PsiClassType;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethodCallExpression;
 import com.intellij.psi.PsiReferenceExpression;
-import com.microsoft.azure.toolkit.intellij.java.sdk.analyzer.UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,8 +65,7 @@ public class UseOfBlockOnAsyncClientsCheckTest {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("UseOfBlockOnAsyncClientsCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("block",
             "blockOptional",
             "blockFirst",
@@ -79,9 +78,10 @@ public class UseOfBlockOnAsyncClientsCheckTest {
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
         when(mockRuleConfig.getScopeToCheck()).thenReturn(Arrays.asList("reactor.core.publisher.Flux",
             "reactor.core.publisher.Mono"));
-        mockVisitor = new UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor(mockHolder, mockRuleConfigLoader);
         mockElement = mock(PsiMethodCallExpression.class);
         problemElement = mock(PsiElement.class);
+        Map<String, RuleConfig> mockRules = Map.of("UseOfBlockOnAsyncClientsCheck", mockRuleConfig);
+        mockVisitor = new UseOfBlockOnAsyncClientsCheck.UseOfBlockOnAsyncClientsVisitor(mockHolder, mockRules);
     }
 
     @ParameterizedTest

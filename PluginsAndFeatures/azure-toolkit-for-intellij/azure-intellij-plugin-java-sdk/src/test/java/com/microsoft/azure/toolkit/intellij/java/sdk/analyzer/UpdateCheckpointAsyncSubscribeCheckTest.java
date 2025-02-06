@@ -15,6 +15,7 @@ import com.intellij.psi.PsiReferenceExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,31 +45,34 @@ public class UpdateCheckpointAsyncSubscribeCheckTest {
 
     @Mock private RuleConfigLoader mockRuleConfigLoader;
     @Mock private RuleConfig mockRuleConfig;
+    @Mock
+    private JavaElementVisitor mockVisitor;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("UpdateCheckpointAsyncSubscribeCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("updateCheckpointAsync"));
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
         when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.singletonList("EventBatchContext"));
         mockMethodCallExpression = mock(PsiMethodCallExpression.class);
         mockPsiElement = mock(PsiElement.class);
+
+        Map<String, RuleConfig> mockRules = Map.of("UpdateCheckpointAsyncSubscribeCheck", mockRuleConfig);
+        mockVisitor = new UpdateCheckpointAsyncSubscribeCheck.UpdateCheckpointAsyncVisitor(mockHolder,
+            mockRules);
     }
 
     @ParameterizedTest
     @MethodSource("provideTestCases")
     public void testWithParameterizedCases(String packageName, String mainMethodFound,
         int numOfInvocations, String followingMethod, String objectType) {
-        JavaElementVisitor visitor = new UpdateCheckpointAsyncSubscribeCheck.UpdateCheckpointAsyncVisitor(mockHolder,
-            mockRuleConfigLoader);
         setupMockMethodCall(packageName, mainMethodFound, numOfInvocations, followingMethod,
             objectType,
             SUGGESTION_MESSAGE);
-        visitor.visitMethodCallExpression(mockMethodCallExpression);
+        mockVisitor.visitMethodCallExpression(mockMethodCallExpression);
         verify(mockHolder, times(numOfInvocations)).registerProblem(eq(mockPsiElement),
             eq(SUGGESTION_MESSAGE));
     }

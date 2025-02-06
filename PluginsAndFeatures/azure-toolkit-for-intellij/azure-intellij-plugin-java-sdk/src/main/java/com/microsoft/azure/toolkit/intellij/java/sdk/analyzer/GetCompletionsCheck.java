@@ -13,6 +13,7 @@ import com.intellij.psi.PsiMethodCallExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -22,7 +23,7 @@ public class GetCompletionsCheck extends LocalInspectionTool {
 
     @Override
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new GetCompletionsCheck.GetCompletionsVisitor(holder, RuleConfigLoader.getInstance());
+        return new GetCompletionsCheck.GetCompletionsVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
 
     static class GetCompletionsVisitor extends JavaElementVisitor {
@@ -30,16 +31,16 @@ public class GetCompletionsCheck extends LocalInspectionTool {
         private static RuleConfig RULE_CONFIG;
         private static boolean SKIP_WHOLE_RULE;
 
-        GetCompletionsVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+        GetCompletionsVisitor(ProblemsHolder holder, Map<String, RuleConfig> ruleConfigs) {
             this.holder = holder;
-            initializeRuleConfig(ruleConfigLoader);
+            initializeRuleConfig(ruleConfigs);
         }
 
-        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+        private void initializeRuleConfig(Map<String, RuleConfig> ruleConfigs) {
             if (RULE_CONFIG == null) {
                 final String ruleName = "GetCompletionsCheck";
-                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
-                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+                RULE_CONFIG = ruleConfigs.get(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.isSkipRuleCheck();
             }
         }
 

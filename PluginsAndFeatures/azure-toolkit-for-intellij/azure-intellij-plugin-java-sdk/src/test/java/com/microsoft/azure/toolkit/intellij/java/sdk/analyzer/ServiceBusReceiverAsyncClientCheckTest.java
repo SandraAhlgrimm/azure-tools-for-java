@@ -11,6 +11,7 @@ import com.intellij.psi.PsiTypeElement;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -56,25 +57,24 @@ public class ServiceBusReceiverAsyncClientCheckTest {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("ServiceBusReceiverAsyncClientCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("ServiceBusReceiverAsyncClient"));
         when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.emptyList());
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
         mockTypeElement = mock(PsiTypeElement.class);
+        Map<String, RuleConfig> mockRules = Map.of("ServiceBusReceiverAsyncClientCheck", mockRuleConfig);
+        mockVisitor = new ServiceBusReceiverAsyncClientCheck.ServiceBusReceiverAsyncClientCheckVisitor(mockHolder, mockRules);
     }
 
     @ParameterizedTest
     @MethodSource("provideServiceBusReceiverAsyncClientTestCases")
     void detectsServiceBusReceiverAsyncClientUsage(TestCase testCase) {
-        JavaElementVisitor visitor = new ServiceBusReceiverAsyncClientCheck.ServiceBusReceiverAsyncClientCheckVisitor(mockHolder, mockRuleConfigLoader);
         setupMockElement(mockTypeElement, testCase.numOfInvocations, testCase.usagesToCheck);
-        visitor.visitTypeElement(mockTypeElement);
+        mockVisitor.visitTypeElement(mockTypeElement);
         verify(mockHolder, times(testCase.numOfInvocations)).registerProblem(eq(mockTypeElement), eq(SUGGESTION_MESSAGE));
     }
 
     private static Stream<TestCase> provideServiceBusReceiverAsyncClientTestCases() {
-
         return Stream.of(
             new TestCase("ServiceBusReceiverAsyncClient",  1),
             new TestCase("ServiceBusProcessorClient",  0),

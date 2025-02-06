@@ -7,6 +7,7 @@ import com.intellij.psi.PsiTypeElement;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -18,7 +19,7 @@ public class ServiceBusReceiverAsyncClientCheck extends LocalInspectionTool {
     @Override
     public JavaElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
         return new ServiceBusReceiverAsyncClientCheck.ServiceBusReceiverAsyncClientCheckVisitor(holder,
-            RuleConfigLoader.getInstance());
+            RuleConfigLoader.getInstance().getRuleConfigs());
     }
 
 
@@ -32,18 +33,18 @@ public class ServiceBusReceiverAsyncClientCheck extends LocalInspectionTool {
          * Constructor to initialize the visitor with the holder and isOnTheFly flag.
          *
          * @param holder Holder for the problems found by the inspection
-         * @param ruleConfigLoader RuleConfigLoader object to load the rule configuration
+         * @param ruleConfigs Rule configurations for the inspection
          */
-        public ServiceBusReceiverAsyncClientCheckVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+        public ServiceBusReceiverAsyncClientCheckVisitor(ProblemsHolder holder, Map<String, RuleConfig> ruleConfigs) {
             this.holder = holder;
-            initializeRuleConfig(ruleConfigLoader);
+            initializeRuleConfig(ruleConfigs);
         }
 
-        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+        private void initializeRuleConfig(Map<String, RuleConfig> ruleConfigs) {
             if (RULE_CONFIG == null) {
                 final String ruleName = "ServiceBusReceiverAsyncClientCheck";
-                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
-                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+                RULE_CONFIG = ruleConfigs.get(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.isSkipRuleCheck();
             }
         }
 

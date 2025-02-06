@@ -14,6 +14,7 @@ import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,12 +54,11 @@ public class GetCompletionsCheckTest {
         mockHolder = mock(ProblemsHolder.class);
         methodCallExpression = mock(PsiMethodCallExpression.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("GetCompletionsCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("getCompletions"));
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
-        mockVisitor = new GetCompletionsCheck.GetCompletionsVisitor(mockHolder, mockRuleConfigLoader);
-
+        Map<String, RuleConfig> mockRules = Map.of("GetCompletionsCheck", mockRuleConfig);
+        mockVisitor = new GetCompletionsCheck.GetCompletionsVisitor(mockHolder, mockRules);
     }
 
     @ParameterizedTest

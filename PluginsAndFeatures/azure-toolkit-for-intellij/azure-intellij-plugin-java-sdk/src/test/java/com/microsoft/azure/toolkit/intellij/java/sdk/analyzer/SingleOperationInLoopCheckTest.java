@@ -25,6 +25,7 @@ import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -75,16 +76,16 @@ public class SingleOperationInLoopCheckTest {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("SingleOperationInLoopTextAnalyticsCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Arrays.asList("detectLanguageBatch",
             "recognizeEntitiesBatch, recognizePiiEntitiesBatch, recognizeLinkedEntitiesBatch",
             "extractKeyPhrasesBatch", "analyzeSentimentBatch"));
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
         when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.singletonList("com.azure.ai.textanalytics"));
-        mockVisitor = createVisitor();
         initializer = mock(PsiMethodCallExpression.class);
         expression = mock(PsiMethodCallExpression.class);
+        Map<String, RuleConfig> mockRules = Map.of("SingleOperationInLoopTextAnalyticsCheck", mockRuleConfig);
+        mockVisitor = new SingleOperationInLoopTextAnalyticsCheck.SingleOperationInLoopVisitor(mockHolder, mockRules);
     }
 
     @ParameterizedTest
@@ -102,10 +103,6 @@ public class SingleOperationInLoopCheckTest {
             verify(mockHolder, times(testCase.numberOfInvocations)).registerProblem(Mockito.eq(expression),
                 Mockito.eq(expectedMessage));
         }
-    }
-
-    private JavaElementVisitor createVisitor() {
-        return new SingleOperationInLoopTextAnalyticsCheck.SingleOperationInLoopVisitor(mockHolder, mockRuleConfigLoader);
     }
 
     private void setupWithSinglePsiExpressionStatement(PsiStatement loopStatement, String packageName,

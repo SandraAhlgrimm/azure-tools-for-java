@@ -17,6 +17,7 @@ import com.intellij.psi.PsiVariable;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -36,7 +37,7 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new DisableAutoCompleteVisitor(holder, RuleConfigLoader.getInstance());
+        return new DisableAutoCompleteVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
     
     /**
@@ -50,17 +51,16 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
         private static boolean SKIP_WHOLE_RULE;
         private final ProblemsHolder holder;
 
-
-    DisableAutoCompleteVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+    DisableAutoCompleteVisitor(ProblemsHolder holder, Map<String, RuleConfig> ruleConfigs) {
         this.holder = holder;
-        initializeRuleConfig(ruleConfigLoader);
+        initializeRuleConfig(ruleConfigs);
     }
 
-    private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+    private void initializeRuleConfig(Map<String, RuleConfig> ruleConfigs) {
         if (RULE_CONFIG == null) {
             final String ruleName = "DisableAutoCompleteCheck";
-            RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
-            SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+            RULE_CONFIG = ruleConfigs.get(ruleName);
+            SKIP_WHOLE_RULE = RULE_CONFIG.isSkipRuleCheck();
         }
     }
         /**

@@ -24,6 +24,7 @@ import com.intellij.psi.PsiWhileStatement;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.List;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -52,7 +53,7 @@ public class SingleOperationInLoopTextAnalyticsCheck extends LocalInspectionTool
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new SingleOperationInLoopVisitor(holder, RuleConfigLoader.getInstance());
+        return new SingleOperationInLoopVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
 
     /**
@@ -66,16 +67,16 @@ public class SingleOperationInLoopTextAnalyticsCheck extends LocalInspectionTool
         private static RuleConfig RULE_CONFIG;
         private static boolean SKIP_WHOLE_RULE;
 
-        public SingleOperationInLoopVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+        public SingleOperationInLoopVisitor(ProblemsHolder holder, Map<String, RuleConfig> ruleConfigs) {
             this.holder = holder;
-            initializeRuleConfig(ruleConfigLoader);
+            initializeRuleConfig(ruleConfigs);
         }
 
-        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+        private void initializeRuleConfig(Map<String, RuleConfig> ruleConfigs) {
             if (RULE_CONFIG == null) {
                 final String ruleName = "SingleOperationInLoopTextAnalyticsCheck";
-                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
-                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+                RULE_CONFIG = ruleConfigs.get(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.isSkipRuleCheck();
             }
         }
 

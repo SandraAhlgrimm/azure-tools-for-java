@@ -23,6 +23,7 @@ import com.intellij.psi.PsiVariable;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+import java.util.Map;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +38,7 @@ public class HardcodedAPIKeysAndTokensCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new APIKeysAndTokensVisitor(holder, RuleConfigLoader.getInstance());
+        return new APIKeysAndTokensVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
 
     /**
@@ -49,16 +50,16 @@ public class HardcodedAPIKeysAndTokensCheck extends LocalInspectionTool {
         private static RuleConfig RULE_CONFIG;
         private static boolean SKIP_WHOLE_RULE;
 
-        APIKeysAndTokensVisitor(ProblemsHolder holder, RuleConfigLoader ruleConfigLoader) {
+        APIKeysAndTokensVisitor(ProblemsHolder holder, Map<String, RuleConfig> ruleConfigs) {
             this.holder = holder;
-            initializeRuleConfig(ruleConfigLoader);
+            initializeRuleConfig(ruleConfigs);
         }
 
-        private void initializeRuleConfig(RuleConfigLoader ruleConfigLoader) {
+        private void initializeRuleConfig(Map<String, RuleConfig> ruleConfigs) {
             if (RULE_CONFIG == null) {
                 final String ruleName = "HardcodedAPIKeysAndTokensCheck";
-                RULE_CONFIG = ruleConfigLoader.getRuleConfig(ruleName);
-                SKIP_WHOLE_RULE = RULE_CONFIG.skipRuleCheck();
+                RULE_CONFIG = ruleConfigs.get(ruleName);
+                SKIP_WHOLE_RULE = RULE_CONFIG.isSkipRuleCheck();
             }
         }
         @Override

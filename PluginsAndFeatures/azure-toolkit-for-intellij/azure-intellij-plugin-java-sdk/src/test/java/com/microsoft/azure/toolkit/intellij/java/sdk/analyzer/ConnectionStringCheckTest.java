@@ -12,6 +12,7 @@ import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,6 +48,7 @@ public class ConnectionStringCheckTest {
     private RuleConfigLoader mockRuleConfigLoader;
     @Mock
     private RuleConfig mockRuleConfig;
+    @Mock
     private PsiElement problemElement;
 
     @BeforeEach
@@ -54,14 +56,13 @@ public class ConnectionStringCheckTest {
         MockitoAnnotations.openMocks(this);
         mockHolder = mock(ProblemsHolder.class);
         // Set up mock rule config
-        when(mockRuleConfigLoader.getRuleConfig("ConnectionStringCheck")).thenReturn(mockRuleConfig);
-        when(mockRuleConfig.skipRuleCheck()).thenReturn(false);
+        when(mockRuleConfig.isSkipRuleCheck()).thenReturn(false);
         when(mockRuleConfig.getUsagesToCheck()).thenReturn(Collections.singletonList("connectionString"));
         when(mockRuleConfig.getAntiPatternMessage()).thenReturn(SUGGESTION_MESSAGE);
-        when(mockRuleConfig.getScopeToCheck()).thenReturn(Arrays.asList("com.azure."));
-
-        methodCallExpression = mock(PsiMethodCallExpression.class);
-        mockVisitor = new ConnectionStringCheck.ConnectionStringCheckVisitor(mockHolder, mockRuleConfigLoader);
+        when(mockRuleConfig.getScopeToCheck()).thenReturn(Collections.singletonList("com.azure."));
+        // Inject mock rules
+        Map<String, RuleConfig> mockRules = Map.of("ConnectionStringCheck", mockRuleConfig);
+        mockVisitor = new ConnectionStringCheck.ConnectionStringCheckVisitor(mockHolder, mockRules);
     }
 
     @ParameterizedTest

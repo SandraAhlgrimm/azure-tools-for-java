@@ -117,7 +117,7 @@ public class AzureVmTargetType extends TargetEnvironmentType<AzureVmTargetEnviro
                 if (configuration instanceof SshTargetEnvironmentConfiguration) {
                     final SshConfig sshConfig = ((SshTargetEnvironmentConfiguration) configuration).findSshConfig(project);
                     final SshUiData uiData = sshConfig != null ? new SshUiData(sshConfig, true) : null;
-                    SshTargetType.Companion.handleBrowsing$intellij_remoteRun(uiData, project, title, component, textComponentAccessor);
+//                    SshTargetType.Companion.handleBrowsing$intellij_remoteRun(uiData, project, title, component, textComponentAccessor);
                 } else {
                     Messages.showWarningDialog(component, RemoteSdkBundle.message("dialog.message.got.unexpected.settings.for.browsing", new Object[0]), title);
                 }

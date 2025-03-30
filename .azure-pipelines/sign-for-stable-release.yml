@@ -19,6 +19,7 @@ extends:
       name: 1ES_JavaTooling_Pool
       image: 1ES_JavaTooling_Ubuntu-2004
       os: linux
+      timeoutInMinutes: 360
     sdl:
       sourceAnalysisPool:
         name: 1ES_JavaTooling_Pool
@@ -31,6 +32,7 @@ extends:
         jobs:
           - job: Job_1
             displayName: Build and Sign Azure Plugin for IntelliJ
+            timeoutInMinutes: 360
             templateContext:
               outputs:
                 - output: pipelineArtifact
@@ -85,6 +87,7 @@ extends:
                   SYSTEM_ACCESSTOKEN: $(System.AccessToken)  
               - task: CmdLine@2
                 displayName: Sign jars
+                timeoutInMinutes: 240
                 inputs:
                   script: |
                     files=$(find . -type f -name "azure-intellij-*.jar" -o -name "azure-toolkit-*.jar" -o -name "azuretools-core-*.jar" -o -name "azure-explorer-common-*.jar" -o -name "hdinsight-node-common-*.jar" -o -name "azure-sdk-reference-book.jar")

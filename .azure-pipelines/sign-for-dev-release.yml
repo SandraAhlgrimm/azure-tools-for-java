@@ -37,7 +37,7 @@ extends:
               outputs:
                 - output: pipelineArtifact
                   artifactName: drop
-                  targetPath: $(build.artifactstagingdirectory)
+                  targetPath: $(build.artifactstagingdirectory)/drop
                   displayName: "Publish Artifact: drop"
             steps:
               - checkout: self
@@ -138,7 +138,7 @@ extends:
                     echo '<filelist>' >> signing-filelist.xml
                     echo '    <certificate certnumbers="100010171">' >> signing-filelist.xml
 
-                    find . -type f -name "azure-intellij-*.jar" -o -name "azure-toolkit-*.jar" -o -name "azuretools-core-*.jar" -o -name "azure-explorer-common-*.jar" -o -name "hdinsight-node-common-*.jar" -o -name "azure-sdk-reference-book.jar" | while read -r file; do
+                    find . -type f -name "azure-intellij-*.jar" -o -name "azure-toolkit-ide-*.jar" -o -name "azuretools-core-*.jar" -o -name "azure-explorer-common-*.jar" -o -name "hdinsight-node-common-*.jar" -o -name "azure-sdk-reference-book.jar" | while read -r file; do
                         clean_file="${file#./}"
                         abs_path="$ABSOLUTE_PATH/$clean_file"
                         echo "        <file srcpath=\"$abs_path\" dstpath=\"$abs_path\"></file>" >> signing-filelist.xml
@@ -162,8 +162,8 @@ extends:
                 inputs:
                   SourceFolder: $(system.defaultworkingdirectory)/artifacts
                   Contents: "*.zip"
-                  TargetFolder: $(build.artifactstagingdirectory)
+                  TargetFolder: $(build.artifactstagingdirectory)/drop
               - task: AzureArtifacts.manifest-generator-task.manifest-generator-task.ManifestGeneratorTask@0
                 displayName: "Manifest Generator "
                 inputs:
-                  BuildDropPath: $(build.artifactstagingdirectory)
+                  BuildDropPath: $(build.artifactstagingdirectory)/drop

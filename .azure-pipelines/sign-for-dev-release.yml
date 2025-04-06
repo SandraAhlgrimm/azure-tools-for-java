@@ -132,12 +132,24 @@ extends:
                 timeoutInMinutes: 240
                 inputs:
                   script: |
-                    files=$(find . -type f -name "azure-intellij-*.jar" -o -name "azure-toolkit-*.jar" -o -name "azuretools-core-*.jar" -o -name "azure-explorer-common-*.jar" -o -name "hdinsight-node-common-*.jar" -o -name "azure-sdk-reference-book.jar")
-                    for file in $files; do
-                        fileName=$(basename "$file")
-                        dotnet "$MBSIGN_APPFOLDER/DDSignFiles.dll" -- /file:"$fileName" /certs:100010171
+                    ABSOLUTE_PATH="$(pwd)"
+                    # Generate the signing-filelist.xml file
+                    echo '<?xml version="1.0" encoding="utf-8" ?>' > signing-filelist.xml
+                    echo '<filelist>' >> signing-filelist.xml
+                    echo '    <certificate certnumbers="100010171">' >> signing-filelist.xml
+
+                    find . -type f -name "azure-intellij-*.jar" -o -name "azure-toolkit-*.jar" -o -name "azuretools-core-*.jar" -o -name "azure-explorer-common-*.jar" -o -name "hdinsight-node-common-*.jar" -o -name "azure-sdk-reference-book.jar" | while read -r file; do
+                        clean_file="${file#./}"
+                        abs_path="$ABSOLUTE_PATH/$clean_file"
+                        echo "        <file srcpath=\"$abs_path\" dstpath=\"$abs_path\"></file>" >> signing-filelist.xml
                     done
-                  workingDirectory: 'artifacts/intellij/folder/azure-toolkit-for-intellij/lib'      
+
+                    echo '    </certificate>' >> signing-filelist.xml
+                    echo '</filelist>' >> signing-filelist.xml
+
+                    dotnet "$MBSIGN_APPFOLDER/DDSignFiles.dll" -- /filelist:signing-filelist.xml
+                    rm signing-filelist.xml
+                  workingDirectory: 'artifacts/intellij/folder/azure-toolkit-for-intellij/lib'    
               - task: Bash@3
                 displayName: Repackage
                 inputs:

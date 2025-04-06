@@ -118,7 +118,7 @@ public class TreeUtils {
             public void mouseMoved(MouseEvent e) {
                 final Tree.TreeNode<?> node = getTreeNodeAtMouse(tree, e);
                 final boolean isMouseAtActionIcon = getHoverInlineActionIndex(tree, e, Optional.ofNullable(node)
-                        .map(Tree.TreeNode::getInlineActionViews).map(List::size).orElse(0)) > -1;
+                    .map(Tree.TreeNode::getInlineActionViews).map(List::size).orElse(0)) > -1;
                 final Cursor cursor = isMouseAtActionIcon ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor();
                 tree.setCursor(cursor);
             }
@@ -167,7 +167,7 @@ public class TreeUtils {
             public void mousePressed(MouseEvent e) {
                 final Tree.TreeNode<?> node = getTreeNodeAtMouse(tree, e);
                 final List<IView.Label> inlineActionViews = Optional.ofNullable(node)
-                        .map(Tree.TreeNode::getInlineActionViews).orElse(new ArrayList<>());
+                    .map(Tree.TreeNode::getInlineActionViews).orElse(new ArrayList<>());
                 final int inlineActionIndex = getHoverInlineActionIndex(tree, e, inlineActionViews.size());
                 if (Objects.nonNull(node) && e.getClickCount() == 1 && inlineActionIndex > -1) {
                     final String place = TreeUtils.getPlace(tree) + "." + (TreeUtils.underAppGroups(node) ? "app" : "type") + ".inline";
@@ -211,7 +211,7 @@ public class TreeUtils {
         return index < actionCount ? index : -1;
     }
 
-    private static IntellijAzureActionManager.ActionGroupWrapper toIntellijActionGroup(IActionGroup actions) {
+    public static IntellijAzureActionManager.ActionGroupWrapper toIntellijActionGroup(IActionGroup actions) {
         final ActionManager am = ActionManager.getInstance();
         if (actions instanceof IntellijAzureActionManager.ActionGroupWrapper) {
             return (IntellijAzureActionManager.ActionGroupWrapper) actions;
@@ -278,6 +278,8 @@ public class TreeUtils {
         if (resource instanceof Favorite) {
             resource = ((Favorite) resource).getResource();
             root = r.getChildCount() > 0 ? (DefaultMutableTreeNode) r.getFirstChild() : null; // favorite root
+        } else if (resource instanceof AzService) {
+            root = r.getChildCount() > 1 ? ((DefaultMutableTreeNode) r.getChildAt(2)) : null; // types root
         }
         if (Objects.nonNull(resource)) {
             selectResourceNode(tree, resource, root);
@@ -294,6 +296,9 @@ public class TreeUtils {
 
             @Override
             public boolean contains(final TreePath path) {
+                if (resource instanceof AzService) {
+                    return false;
+                }
                 final Object current = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
                 final ResourceId resourceId = ResourceId.fromString(resource.getId() + "DUMMY");
                 if (current instanceof AzService s && s.getName().equalsIgnoreCase(resourceId.providerNamespace())) {
@@ -333,7 +338,7 @@ public class TreeUtils {
             }
         });
         tree.getModel().addTreeModelListener(listener.get());
-        doSelectNode(tree, finder, checkpoint, listener.get());
+        AzureTaskManager.getInstance().runLater(()-> doSelectNode(tree, finder, checkpoint, listener.get()));
     }
 
     private static void doSelectNode(final @Nonnull JTree tree, final @Nonnull NodeFinder matcher, final AtomicReference<TreePath> checkpoint, final TreeModelListener listener) {

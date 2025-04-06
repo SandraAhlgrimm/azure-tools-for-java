@@ -12,19 +12,29 @@ import com.microsoft.azure.toolkit.lib.common.action.AzureActionManager;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-public class ActionNode<T> extends Node<Action.Id<T>> {
-    private Action.Id<T> value;
-    private T resource;
+public class ActionNode<T> extends Node<Action<T>> {
+    @Nullable
+    private final T resource;
 
-    public ActionNode(@Nonnull Action.Id<T> id, @Nonnull final T resource) {
-        super(id);
-        this.value = id;
+    public ActionNode(@Nonnull Action.Id<T> id) {
+        this(id, null);
+    }
+
+    public ActionNode(@Nonnull Action.Id<T> id, @Nullable final T resource) {
+        this(AzureActionManager.getInstance().getAction(id), resource);
+    }
+
+    public ActionNode(@Nonnull Action<T> action) {
+        this(action, null);
+    }
+
+    public ActionNode(@Nonnull Action<T> action, @Nullable final T resource) {
+        super(action);
         this.resource = resource;
-
         this.withIcon(i -> AzureIcon.builder().iconPath(getAction().getView(resource).getIconPath()).build());
         this.withLabel(i -> getAction().getView(resource).getLabel());
         this.withDescription(i -> getAction().getView(resource).getDescription());
-        this.onClicked((action, event) -> AzureActionManager.getInstance().getAction(action).handle(resource, event));
+        this.onClicked((a, event) -> getValue().handle(resource, event));
     }
 
     public boolean isEnabled() {
@@ -36,6 +46,6 @@ public class ActionNode<T> extends Node<Action.Id<T>> {
     }
 
     private Action<T> getAction() {
-        return AzureActionManager.getInstance().getAction(value);
+        return getValue();
     }
 }

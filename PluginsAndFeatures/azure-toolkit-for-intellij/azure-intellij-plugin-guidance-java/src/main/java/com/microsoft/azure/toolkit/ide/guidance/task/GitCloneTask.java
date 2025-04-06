@@ -20,6 +20,8 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 
 public class GitCloneTask implements Task {
@@ -76,6 +78,7 @@ public class GitCloneTask implements Task {
             }
             // create new branch and check out
             git.fetch().setRemote(ORIGIN).call();
+            // TODO: use commit id to create branch
             git.branchCreate().setName(branch).setStartPoint(String.format("%s/%s", ORIGIN, branch)).call();
             git.checkout().setName(branch).call();
             AzureMessager.getMessager().info(AzureString.format("Clone project to %s successfully.", directory));
@@ -93,9 +96,12 @@ public class GitCloneTask implements Task {
     }
 
     private void init() {
-        final String directoryName = String.format("%s-%s", context.getCourse().getName(), Utils.getTimestamp());
-        final String defaultPath = new File(System.getProperty("user.home"), directoryName).getAbsolutePath();
-        this.context.applyResult(DEFAULT_GIT_DIRECTORY, defaultPath);
+        final String userHome = System.getProperty("user.home");
+        Path projectDir = Path.of(userHome, context.getCourse().getName());
+        if (Files.isDirectory(projectDir)) {
+            projectDir = Path.of(userHome, String.format("%s-%s", context.getCourse().getName(), Utils.getTimestamp()));
+        }
+        this.context.applyResult(DEFAULT_GIT_DIRECTORY, projectDir.toAbsolutePath().toString());
     }
 
     private void copyConfigurationToWorkspace(final File workspace) throws IOException {

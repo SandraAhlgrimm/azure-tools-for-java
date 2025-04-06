@@ -9,16 +9,19 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.microsoft.azure.toolkit.intellij.connector.Connection;
-import com.microsoft.azure.toolkit.intellij.connector.ConnectionTopics;
-import com.microsoft.azure.toolkit.intellij.connector.DeploymentTargetTopics;
+import com.microsoft.azure.toolkit.intellij.connector.*;
 import com.microsoft.azure.toolkit.intellij.facet.AzureFacet;
+import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.bundle.AzureString;
 import com.microsoft.azure.toolkit.lib.common.exception.AzureToolkitRuntimeException;
 import com.microsoft.azure.toolkit.lib.common.messager.AzureMessager;
 import com.microsoft.azure.toolkit.lib.common.model.AbstractAzResource;
+import com.microsoft.azure.toolkit.lib.common.model.AbstractAzServiceSubscription;
 import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
 import com.microsoft.azure.toolkit.lib.common.operation.OperationBundle;
+import com.microsoft.azure.toolkit.lib.common.operation.OperationContext;
+import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
+import com.microsoft.azure.toolkit.lib.identities.Identity;
 import io.github.cdimascio.dotenv.internal.DotenvParser;
 import io.github.cdimascio.dotenv.internal.DotenvReader;
 import lombok.Getter;
@@ -33,20 +36,17 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static com.microsoft.azure.toolkit.intellij.connector.ConnectionTopics.CONNECTION_CHANGED;
+import static com.microsoft.azure.toolkit.intellij.connector.IManagedIdentitySupported.*;
 import static com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule.DOT_ENV;
 
 @Getter
 public class Profile {
+    public static final String IDENTITY_PERMISSION_MESSAGE = "The managed identity <a href=\"%s\">%s</a> (%s) doesn't have enough permission to access resource <a href=\"%s\">%s</a>.";
     @Nonnull
     private final String name;
     @Nonnull
@@ -97,9 +97,29 @@ public class Profile {
     }
 
     public synchronized Future<?> addConnection(@Nonnull Connection<?, ?> connection) {
+        OperationContext.action().setTelemetryProperty("authenticationType", Optional.ofNullable(connection.getAuthenticationType()).map(AuthenticationType::toString).orElse(StringUtils.EMPTY));
         AzureFacet.addTo(this.module.getModule());
-        this.resourceManager.addResource(connection.getResource());
+        final Resource<?> resource = connection.getResource();
+        this.resourceManager.addResource(resource);
         this.connectionManager.addConnection(connection);
+        // handle user assigned managed identity
+        final Resource<Identity> identityResource = connection.getUserAssignedManagedIdentity();
+        if (connection.getAuthenticationType() == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY && Objects.nonNull(identityResource)) {
+            this.resourceManager.addResource(identityResource);
+            AzureTaskManager.getInstance().runInBackground("Validating connection", () -> {
+                final String identity = identityResource.getData().getPrincipalId();
+                final String identityUrl = identityResource.getData().getPortalUrl();
+                final String identityPrincipal = identityResource.getData().getPrincipalId();
+                final String resourceUrl = Optional.ofNullable(resource.getData()).filter(r -> r instanceof AbstractAzServiceSubscription)
+                        .map(r -> ((AbstractAzResource<?, ?, ?>) r).getPortalUrl()).orElse(StringUtils.EMPTY);
+                if (resource instanceof AzureServiceResource<?> serviceResource && !checkPermission(serviceResource, Objects.requireNonNull(identity))) {
+                    final String message = String.format(IDENTITY_PERMISSION_MESSAGE, identityUrl, identityResource.getName(), identityPrincipal, resourceUrl, resource.getName());
+                    final Action<?> openIdentityConfigurationAction = getOpenIdentityConfigurationAction(serviceResource);
+                    final Action<?> grantPermissionAction = getGrantPermissionAction(serviceResource, identity);
+                    AzureMessager.getMessager().warning(message, grantPermissionAction, openIdentityConfigurationAction);
+                }
+            });
+        }
         return this.addConnectionToDotEnv(connection);
     }
 

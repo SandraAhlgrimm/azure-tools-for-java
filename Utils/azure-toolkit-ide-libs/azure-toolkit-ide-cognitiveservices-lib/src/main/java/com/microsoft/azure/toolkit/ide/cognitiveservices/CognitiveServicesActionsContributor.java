@@ -96,9 +96,9 @@ public class CognitiveServicesActionsContributor implements IActionsContributor 
         new Action<>(ENABLE_OPENAI)
                 .withLabel("Azure OpenAI service")
                 .withIdParam(s -> Optional.ofNullable(s).map(Subscription::getId).orElse(StringUtils.EMPTY))
-                .withHandler(s -> {
+                .withHandler((s, e) -> {
                     Optional.ofNullable(s).ifPresent(subscription -> OperationContext.current().setTelemetryProperty("subscriptionId", subscription.getId()));
-                    AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.OPEN_URL).handle(ENABLE_OPENAI_URL);
+                    AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.OPEN_URL).handle(ENABLE_OPENAI_URL, e);
                 })
                 .register(am);
     }

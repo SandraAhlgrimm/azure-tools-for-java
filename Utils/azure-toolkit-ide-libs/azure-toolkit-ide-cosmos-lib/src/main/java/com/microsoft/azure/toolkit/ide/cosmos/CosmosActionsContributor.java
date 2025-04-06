@@ -58,9 +58,9 @@ public class CosmosActionsContributor implements IActionsContributor {
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof CosmosDBAccount)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(resource -> {
+            .withHandler((resource, e) -> {
                 final String connectionString = resource.listConnectionStrings().getPrimaryConnectionString();
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(connectionString);
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(connectionString, e);
                 AzureMessager.getMessager().info("Connection string copied");
             })
             .register(am);
@@ -70,7 +70,7 @@ public class CosmosActionsContributor implements IActionsContributor {
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof CosmosDBAccount)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(resource -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(resource.getPortalUrl() + "/dataExplorer"))
+            .withHandler((resource, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(resource.getPortalUrl() + "/dataExplorer", e))
             .register(am);
 
         new Action<>(GROUP_CREATE_COSMOS_SERVICE)

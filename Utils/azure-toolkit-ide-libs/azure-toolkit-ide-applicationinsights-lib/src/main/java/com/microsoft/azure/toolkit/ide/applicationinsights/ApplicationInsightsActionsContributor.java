@@ -38,8 +38,8 @@ public class ApplicationInsightsActionsContributor implements IActionsContributo
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ApplicationInsight)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(insight -> {
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(insight.getConnectionString());
+            .withHandler((insight, e) -> {
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(insight.getConnectionString(), e);
                 AzureMessager.getMessager().info("Connection string copied");
             })
             .register(am);
@@ -49,8 +49,8 @@ public class ApplicationInsightsActionsContributor implements IActionsContributo
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ApplicationInsight)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(insight -> {
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(insight.getInstrumentationKey());
+            .withHandler((insight, e) -> {
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(insight.getInstrumentationKey(), e);
                 AzureMessager.getMessager().info("Instrumentation key copied");
             })
             .register(am);
@@ -61,7 +61,7 @@ public class ApplicationInsightsActionsContributor implements IActionsContributo
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ApplicationInsight)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(insight -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(insight.getPortalUrl() + "/applicationMap"))
+            .withHandler((insight, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(insight.getPortalUrl() + "/applicationMap", e))
             .register(am);
 
         new Action<>(OPEN_LIVE_METRICS)
@@ -70,7 +70,7 @@ public class ApplicationInsightsActionsContributor implements IActionsContributo
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ApplicationInsight)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(insight -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(insight.getPortalUrl() + "/quickPulse"))
+            .withHandler((insight, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(insight.getPortalUrl() + "/quickPulse", e))
             .register(am);
 
         new Action<>(OPEN_TRANSACTION_SEARCH)
@@ -79,7 +79,7 @@ public class ApplicationInsightsActionsContributor implements IActionsContributo
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ApplicationInsight)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(insight -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(insight.getPortalUrl() + "/searchV1"))
+            .withHandler((insight, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(insight.getPortalUrl() + "/searchV1", e))
             .register(am);
 
         new Action<>(GROUP_CREATE_APPLICATIONINSIGHT)

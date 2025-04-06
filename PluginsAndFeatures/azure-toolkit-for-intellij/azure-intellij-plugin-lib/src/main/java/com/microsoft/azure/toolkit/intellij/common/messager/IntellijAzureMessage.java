@@ -7,7 +7,7 @@ package com.microsoft.azure.toolkit.intellij.common.messager;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
-import com.intellij.util.ui.UIUtil;
+import com.intellij.util.ui.StartupUiUtil;
 import com.microsoft.azure.toolkit.lib.common.bundle.AzureString;
 import com.microsoft.azure.toolkit.lib.common.messager.AzureHtmlMessage;
 import com.microsoft.azure.toolkit.lib.common.messager.IAzureMessage;
@@ -15,10 +15,20 @@ import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
+import java.time.Duration;
 
 public class IntellijAzureMessage extends AzureHtmlMessage {
+    public static final int PRIORITY_IMMEDIATE = 0;
+    public static final int PRIORITY_HIGH = 1;
+    public static final int PRIORITY_MIDDLE = 2;
+    public static final int PRIORITY_LOW = 3;
+
     @Getter
     private Project project;
+    @Getter
+    private Integer priority = 0;
+    @Getter
+    private Duration delay = null;
 
     public IntellijAzureMessage(@Nonnull Type type, @Nonnull AzureString message) {
         super(type, message);
@@ -33,13 +43,24 @@ public class IntellijAzureMessage extends AzureHtmlMessage {
         return this;
     }
 
+    public IntellijAzureMessage setPriority(int priority) {
+        this.priority = priority;
+        return this;
+    }
+
+    public IntellijAzureMessage delay(Duration delay) {
+        this.delay = delay;
+        return this;
+    }
+
     protected String getErrorColor() {
         return "#" + Integer.toHexString(JBColor.RED.getRGB()).substring(2);
     }
 
     protected String getValueColor() {
         // color from compile_dark.svg and compile.svg
-        return UIUtil.isUnderDarcula() ? "#499C54" : "#59A869";
+        //noinspection UnstableApiUsage
+        return StartupUiUtil.INSTANCE.isDarkTheme() ? "#688457" : "#59A869";
     }
 }
 

@@ -239,6 +239,13 @@ public class Node<D> {
         return this.children.get();
     }
 
+    public List<Node<?>> getChildrenSync() {
+        if (this.children.compareAndSet(null, Collections.emptyList())) {
+            this.refreshChildren();
+        }
+        return this.children.get();
+    }
+
     @Nonnull
     @ToString.Include
     public View getView() {
@@ -248,7 +255,7 @@ public class Node<D> {
         return this.view.get();
     }
 
-    protected List<Node<?>> buildChildren() {
+    public List<Node<?>> buildChildren() {
         try {
             return this.childrenBuilders.stream().flatMap((builder) -> builder.build(this)).collect(Collectors.toList());
         } catch (final Exception e) {
@@ -260,7 +267,7 @@ public class Node<D> {
         }
     }
 
-    protected View buildView() {
+    public View buildView() {
         try {
             final String label = this.buildLabel();
             final AzureIcon icon = this.buildIcon();

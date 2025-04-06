@@ -30,7 +30,7 @@ public class ArtifactValidationWindow extends AzureDialogWrapper {
     }
 
     public ArtifactValidationWindow(@Nullable Project project, List<String> issues) {
-        super(project, true, IdeModalityType.PROJECT);
+        super(project, true, IdeModalityType.IDE);
         setModal(true);
         setTitle("Artifact Validation");
         setCancelButtonText("Close");

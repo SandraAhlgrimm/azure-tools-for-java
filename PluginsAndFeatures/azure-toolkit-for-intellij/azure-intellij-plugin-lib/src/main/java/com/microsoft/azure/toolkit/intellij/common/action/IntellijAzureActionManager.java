@@ -6,21 +6,7 @@
 package com.microsoft.azure.toolkit.intellij.common.action;
 
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.ActionPlaces;
-import com.intellij.openapi.actionSystem.ActionUpdateThread;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.actionSystem.CommonShortcuts;
-import com.intellij.openapi.actionSystem.CustomShortcutSet;
-import com.intellij.openapi.actionSystem.DataKey;
-import com.intellij.openapi.actionSystem.DataProvider;
-import com.intellij.openapi.actionSystem.DefaultActionGroup;
-import com.intellij.openapi.actionSystem.EmptyAction;
-import com.intellij.openapi.actionSystem.IdeActions;
-import com.intellij.openapi.actionSystem.Presentation;
-import com.intellij.openapi.actionSystem.ShortcutSet;
+import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.DumbAware;
@@ -31,12 +17,10 @@ import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.intellij.common.settings.IntellijStore;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.ActionGroup;
-import com.microsoft.azure.toolkit.lib.common.action.ActionInstance;
-import com.microsoft.azure.toolkit.lib.common.action.AzureActionManager;
-import com.microsoft.azure.toolkit.lib.common.action.AzureActionManagerProvider;
-import com.microsoft.azure.toolkit.lib.common.action.IActionGroup;
+import com.microsoft.azure.toolkit.lib.common.action.*;
 import com.microsoft.azure.toolkit.lib.common.messager.AzureMessageBundle;
 import com.microsoft.azure.toolkit.lib.common.model.AbstractAzResource;
+import com.microsoft.azure.toolkit.lib.common.model.AbstractConnectionStringAzResourceModule;
 import com.microsoft.azure.toolkit.lib.common.model.Emulatable;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.lib.common.view.IView;
@@ -115,9 +99,15 @@ public class IntellijAzureActionManager extends AzureActionManager {
         return (ActionGroupWrapper) ActionManager.getInstance().getAction(id);
     }
 
-    public static String convertToAzureActionPlace(@Nonnull final String place) {
-        return StringUtils.equalsAnyIgnoreCase(place, ActionPlaces.PROJECT_VIEW_POPUP, ActionPlaces.PROJECT_VIEW_TOOLBAR)
-            ? ResourceCommonActionsContributor.PROJECT_VIEW : place;
+    @Override
+    public <D> String getPlace(final ActionInstance<D> action) {
+        final Object event = action.getEvent();
+        if (event instanceof AnActionEvent) {
+            final String place = ((AnActionEvent) event).getPlace();
+            return StringUtils.equalsAnyIgnoreCase(place, ActionPlaces.PROJECT_VIEW_POPUP, ActionPlaces.PROJECT_VIEW_TOOLBAR)
+                ? ResourceCommonActionsContributor.PROJECT_VIEW : place;
+        }
+        return super.getPlace(action);
     }
 
     public static boolean isSuppressed(Action.Id<?> actionId) {
@@ -181,16 +171,17 @@ public class IntellijAzureActionManager extends AzureActionManager {
         @Override
         public void update(@Nonnull AnActionEvent e) {
             final T source = getSource(e);
-            final String place = convertToAzureActionPlace(e.getPlace());
             final Presentation presentation = e.getPresentation();
             final ActionInstance<T> instance = action.instantiate(source, e);
-            final IView.Label view = Optional.of(instance).map(i -> i.getView(place)).orElse(Action.View.INVISIBLE);
+            final IView.Label view = Optional.of(instance).map(ActionInstance::getView).orElse(Action.View.INVISIBLE);
             final boolean visible;
             final boolean isAbstractAzResource = source instanceof AbstractAzResource;
 
             if (source instanceof Emulatable && ((Emulatable) source).isEmulatorResource()) {
                 visible = view.isVisible();
-            } else if (isAbstractAzResource && "[LinkedCluster]".equals(((AbstractAzResource<?, ?, ?>) source).getSubscription().getId())) {
+            } else if (isAbstractAzResource && AbstractConnectionStringAzResourceModule.CONNECTION_STRING_SUBSCRIPTION_ID.equals(((AbstractAzResource<?, ?, ?>) source).getSubscriptionId())) {
+                visible = true;
+            } else if (isAbstractAzResource && "[LinkedCluster]".equals(((AbstractAzResource<?, ?, ?>) source).getSubscriptionId())) {
                 visible = true;
             } else {
                 final boolean isResourceInOtherSubs = isAbstractAzResource && !((AbstractAzResource<?, ?, ?>) source).getSubscription().isSelected();
@@ -297,7 +288,7 @@ public class IntellijAzureActionManager extends AzureActionManager {
                     if (action instanceof com.intellij.openapi.actionSystem.ActionGroup) {
                         this.add(action);
                     } else if (Objects.nonNull(action)) {
-                        this.add(EmptyAction.wrap(action));
+                        this.add(new com.intellij.openapi.actionSystem.AnActionWrapper(action));
                     }
                 }
             } else if (raw instanceof Action<?>) {

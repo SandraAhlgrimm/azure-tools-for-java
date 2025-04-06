@@ -10,7 +10,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.microsoft.azure.toolkit.intellij.azuresdk.enforcer.AzureSdkEnforcer;
 import com.microsoft.azure.toolkit.intellij.azuresdk.service.MachineTaggingService;
-import com.microsoft.azure.toolkit.intellij.azuresdk.service.ProjectLibraryService;
 import com.microsoft.azure.toolkit.intellij.azuresdk.service.WorkspaceTaggingService;
 import com.microsoft.azure.toolkit.intellij.common.survey.CustomerSurvey;
 import com.microsoft.azure.toolkit.intellij.common.survey.CustomerSurveyManager;
@@ -51,6 +50,7 @@ public class ProjectSdkIntrospectionStartupActivity implements ProjectActivity {
             }
             AzureSdkEnforcer.enforce(project);
             ProjectSdkIntrospectionStartupActivity.runActivity(project);
+            FeatureAdvertisementService.advertiseProjectService(project);
         }, error -> log.warn("error occurs in WorkspaceTaggingActivity.", error));
         return null;
     }
@@ -58,11 +58,11 @@ public class ProjectSdkIntrospectionStartupActivity implements ProjectActivity {
     public static void runActivity(@Nonnull final Project project) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                final Set<String> workspaceTags = getWorkspaceTags(project);
+                final Set<String> workspaceTags = WorkspaceTaggingService.getWorkspaceTags(project);
                 trackWorkspaceTagging(workspaceTags);
-                final Set<String> machineTags = getMachineTags(project);
+                final Set<String> machineTags = MachineTaggingService.getMachineTags();
                 trackMachineTagging(machineTags);
-                showCustomerSurvey(project, workspaceTags);
+                Mono.delay(Duration.ofMinutes(60)).subscribe(next -> showCustomerSurvey(project, workspaceTags));
             } catch (final Exception e) {
                 // swallow exception for workspace tagging
                 log.warn(e.getMessage());
@@ -85,17 +85,6 @@ public class ProjectSdkIntrospectionStartupActivity implements ProjectActivity {
             CustomerSurveyManager.getInstance().takeSurvey(project, CustomerSurvey.AZURE_CLIENT_SDK);
         }
         CustomerSurveyManager.getInstance().takeSurvey(project, CustomerSurvey.AZURE_INTELLIJ_TOOLKIT);
-    }
-
-    private static Set<String> getWorkspaceTags(@Nonnull final Project project) {
-        return ProjectLibraryService.getProjectLibraries(project).stream()
-            .flatMap(l -> WorkspaceTaggingService.getWorkspaceTags(l.getGroupId(), l.getArtifactId()).stream()).filter(Objects::nonNull)
-            .filter(StringUtils::isNotBlank)
-            .collect(Collectors.toSet());
-    }
-
-    private static Set<String> getMachineTags(@Nonnull final Project project) {
-        return MachineTaggingService.getMachineTags(project);
     }
 
     private static void trackWorkspaceTagging(final Set<String> tagSet) {

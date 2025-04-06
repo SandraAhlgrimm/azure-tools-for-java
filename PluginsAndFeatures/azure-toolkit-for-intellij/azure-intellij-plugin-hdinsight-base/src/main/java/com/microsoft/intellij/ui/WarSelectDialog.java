@@ -40,7 +40,7 @@ public class WarSelectDialog extends AzureDialogWrapper {
     }
 
     protected WarSelectDialog(@Nullable Project project, List<Artifact> artifactList) {
-        super(project, true, IdeModalityType.PROJECT);
+        super(project, true, IdeModalityType.IDE);
         setModal(true);
         setTitle("Select WAR Artifact");
 

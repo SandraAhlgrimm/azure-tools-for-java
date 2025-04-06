@@ -196,8 +196,8 @@ public class ResourceConnectionActionsContributor implements IActionsContributor
         new Action<>(COPY_ENV_KEY)
             .withIcon(AzureIcons.Action.COPY.getIconPath())
             .withLabel("Copy Key")
-            .withHandler(s -> {
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getKey());
+            .withHandler((s, e) -> {
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getKey(), e);
                 AzureMessager.getMessager().success(AzureString.format("Environment variable key is copied into clipboard."));
             })
             .withAuthRequired(false)
@@ -205,8 +205,8 @@ public class ResourceConnectionActionsContributor implements IActionsContributor
         new Action<>(COPY_ENV_PAIR)
             .withIcon(AzureIcons.Action.COPY.getIconPath())
             .withLabel("Copy")
-            .withHandler(pair -> {
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(String.format("%s=%s", pair.getKey(), pair.getValue()));
+            .withHandler((pair, e) -> {
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(String.format("%s=%s", pair.getKey(), pair.getValue()), e);
                 AzureMessager.getMessager().success(AzureString.format("Environment variable key/value pair is copied into clipboard."));
             })
             .withShortcut(am.getIDEDefaultShortcuts().copy())
@@ -215,10 +215,10 @@ public class ResourceConnectionActionsContributor implements IActionsContributor
         new Action<>(COPY_ENV_VARS)
             .withIcon(AzureIcons.Action.COPY.getIconPath())
             .withLabel("Copy All")
-            .withHandler(c -> {
+            .withHandler((c, e) -> {
                 final List<Pair<String, String>> variables = c.getGeneratedEnvironmentVariables();
                 final String str = variables.stream().map(v -> String.format("%s=%s", v.getKey(), v.getValue())).collect(Collectors.joining(System.lineSeparator()));
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(str);
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(str, e);
                 AzureMessager.getMessager().success(AzureString.format("Environment variables are copied into clipboard."));
             })
             .withShortcut(am.getIDEDefaultShortcuts().copy())

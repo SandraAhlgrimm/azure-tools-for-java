@@ -94,9 +94,9 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withIdParam(AbstractAzResource::getName)
             .visibleWhen(s -> s instanceof ContainerRegistry)
             .enableWhen(ContainerRegistry::isAdminUserEnabled)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 final String command = String.format("docker login %s -u %s -p %s", s.getLoginServerUrl(), s.getUserName(), s.getPrimaryCredential());
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(command);
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(command, e);
                 AzureMessager.getMessager().success(AzureString.format("login command %s is copied into clipboard", command));
             })
             .register(am);
@@ -118,10 +118,10 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withLabel("Copy Registry URL")
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ContainerRegistry)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 final Action<ContainerRegistry> login = am.getAction(LOGIN).bind(s);
                 final Action<ContainerRegistry> copyPassword = am.getAction(COPY_PASSWORD).bind(s);
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getLoginServerUrl());
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getLoginServerUrl(), e);
                 AzureMessager.getMessager().success(AzureString.format("Registry URL %s is copied into clipboard.", s.getLoginServerUrl()), login, copyPassword);
             })
             .register(am);
@@ -131,14 +131,14 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withLabel("Copy Admin Username")
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ContainerRegistry)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 if (!s.isAdminUserEnabled()) {
                     final Action<ContainerRegistry> enableAdminUser = am.getAction(ContainerRegistryActionsContributor.ENABLE_ADMIN_USER).bind(s);
                     throw new AzureToolkitRuntimeException("Admin user is not enabled.", enableAdminUser);
                 }
                 final Action<ContainerRegistry> login = am.getAction(LOGIN).bind(s);
                 final Action<ContainerRegistry> copyPassword = am.getAction(COPY_PASSWORD).bind(s);
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getUserName());
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getUserName(), e);
                 AzureMessager.getMessager().success(AzureString.format("Username %s is copied into clipboard.", s.getUserName()), login, copyPassword);
             })
             .register(am);
@@ -148,14 +148,14 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withLabel("Copy Admin Password")
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ContainerRegistry)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 if (!s.isAdminUserEnabled()) {
                     final Action<ContainerRegistry> enableAdminUser = am.getAction(ContainerRegistryActionsContributor.ENABLE_ADMIN_USER).bind(s);
                     throw new AzureToolkitRuntimeException("Admin user is not enabled.", enableAdminUser);
                 }
                 final Action<ContainerRegistry> login = am.getAction(LOGIN).bind(s);
                 final Action<ContainerRegistry> copyRegistryUrl = am.getAction(COPY_REGISTRY_URL).bind(s);
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getPrimaryCredential());
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getPrimaryCredential(), e);
                 AzureMessager.getMessager().success("Primary password is copied into clipboard.", login, copyRegistryUrl);
             })
             .register(am);
@@ -165,8 +165,8 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withLabel("Copy Digest")
             .withIdParam(Tag::getImageName)
             .visibleWhen(s -> s instanceof Tag)
-            .withHandler(s -> {
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getDigest());
+            .withHandler((s, e) -> {
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(s.getDigest(), e);
                 AzureMessager.getMessager().success(AzureString.format("Digest %s is copied into clipboard.", s.getDigest()));
             })
             .register(am);
@@ -176,9 +176,9 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withLabel("Copy Pull Command")
             .withIdParam(Tag::getImageName)
             .visibleWhen(s -> s instanceof Tag)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 final String command = String.format("docker pull %s", s.getFullName());
-                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(command);
+                am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(command, e);
                 final Action<Tag> pull = am.getAction(ContainerRegistryActionsContributor.PULL_IMAGE).bind(s).withLabel("Pull Now!");
                 final ContainerRegistry registry = s.getParent().getParent().getParent();
                 if (!registry.isAdminUserEnabled()) {
@@ -197,7 +197,7 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withLabel("Copy Run Command")
             .withIdParam(Tag::getImageName)
             .visibleWhen(s -> s instanceof Tag)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 final String command = String.format("docker run -p 8080:8080 %s", s.getFullName());
                 am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(command);
                 AzureMessager.getMessager().success(AzureString.format("Run command %s is copied into clipboard", command));
@@ -244,7 +244,7 @@ public class ContainerRegistryActionsContributor implements IActionsContributor 
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof ResourceGroup)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(s -> am.getAction(ResourceCommonActionsContributor.CREATE_IN_PORTAL).handle(Azure.az(AzureContainerRegistry.class)))
+            .withHandler((s, e) -> am.getAction(ResourceCommonActionsContributor.CREATE_IN_PORTAL).handle(Azure.az(AzureContainerRegistry.class), e))
             .register(am);
     }
 

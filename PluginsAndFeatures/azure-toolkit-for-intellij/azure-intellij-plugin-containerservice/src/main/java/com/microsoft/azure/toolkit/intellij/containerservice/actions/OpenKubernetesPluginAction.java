@@ -5,21 +5,24 @@
 
 package com.microsoft.azure.toolkit.intellij.containerservice.actions;
 
+import com.google.common.util.concurrent.SettableFuture;
 import com.intellij.execution.services.ServiceEventListener;
 import com.intellij.execution.services.ServiceViewContributor;
 import com.intellij.execution.services.ServiceViewManager;
 import com.intellij.ide.projectView.PresentationData;
 import com.intellij.kubernetes.api.Context;
 import com.intellij.kubernetes.api.KubernetesApiProvider;
-import com.intellij.kubernetes.api.settings.KubernetesApiProjectSettings;
 import com.intellij.navigation.ItemPresentation;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.messages.MessageBusConnection;
 import com.microsoft.azure.toolkit.lib.common.messager.AzureMessager;
 import com.microsoft.azure.toolkit.lib.containerservice.KubernetesCluster;
+import io.kubernetes.client.util.KubeConfig;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
@@ -27,9 +30,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Optional;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class OpenKubernetesPluginAction {
 
@@ -49,7 +52,6 @@ public class OpenKubernetesPluginAction {
             return;
         }
         final KubernetesApiProvider apiProvider = KubernetesApiProvider.Companion.getInstance(project);
-        final KubernetesApiProjectSettings projectSettings = KubernetesApiProjectSettings.Companion.getInstance(project);
         final Context context = apiProvider.getExistingContexts().stream()
                 .filter(c -> StringUtils.equals(c.getName(), cluster.getName()))
                 .findFirst().orElse(null);
@@ -84,29 +86,13 @@ public class OpenKubernetesPluginAction {
     }
 
     public static void addClusterContext(@Nonnull final KubernetesCluster cluster, ServiceViewContributor<?> contributor, @Nonnull final Project project) {
-        if (Objects.isNull(getAvailableContext(cluster, project))) {
-            GetKubuCredentialAction.getKubuCredential(cluster, project, false);
-            KubernetesApiProvider.Companion.getInstance(project).refreshConfiguration$intellij_clouds_kubernetes().await(new Continuation<>() {
-                @Nonnull
-                @Override
-                public CoroutineContext getContext() {
-                    return EmptyCoroutineContext.INSTANCE;
-                }
-
-                @Override
-                public void resumeWith(@Nonnull Object o) {
-                    addClusterContext(cluster, contributor, project);
-                }
-            });
-            return;
-        }
-        final Context result = getAvailableContext(cluster, project);
+        final Context result = Optional.ofNullable(getAvailableContext(cluster, project))
+                .orElseGet(() -> OpenKubernetesPluginAction.importClusterContext(cluster, project));
         if (Objects.isNull(result)) {
             return;
         }
-        final KubernetesApiProjectSettings projectSettings = KubernetesApiProjectSettings.Companion.getInstance(project);
         final KubernetesApiProvider apiProvider = KubernetesApiProvider.Companion.getInstance(project);
-        apiProvider.addContext$intellij_clouds_kubernetes(result);
+        apiProvider.addContexts$intellij_clouds_kubernetes(List.of(result));
         final MessageBus messageBus = project.getMessageBus();
         final MessageBusConnection connect = messageBus.connect();
         connect.subscribe(ServiceEventListener.TOPIC, (ServiceEventListener) serviceEvent -> {
@@ -121,11 +107,49 @@ public class OpenKubernetesPluginAction {
         });
     }
 
-    public static Context getAvailableContext(@Nonnull final KubernetesCluster cluster, @Nonnull final Project project) {
+    private static Context getAvailableContext(@Nonnull final KubernetesCluster cluster, @Nonnull final Project project) {
         final KubernetesApiProvider apiProvider = KubernetesApiProvider.Companion.getInstance(project);
         return apiProvider.getActualState$intellij_clouds_kubernetes().getAvailableContexts().stream()
                 .filter(c -> StringUtils.equals(c.getName(), cluster.getName()))
                 .findFirst().orElse(null);
+    }
+
+    @Nullable
+    private static Context importClusterContext(@Nonnull final KubernetesCluster cluster, @Nonnull final Project project) {
+        GetKubuCredentialAction.getKubuCredential(cluster, project, false);
+        final Path path = Path.of(System.getProperty("user.home"), KubeConfig.KUBEDIR, KubeConfig.KUBECONFIG);
+        final VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path);
+        if (Objects.isNull(file)) {
+            return null;
+        }
+        final SettableFuture<Context> future = SettableFuture.create();
+        KubernetesApiProvider.Companion.getInstance(project).checkConfiguration$intellij_clouds_kubernetes(file, new Continuation<>() {
+            @Nonnull
+            @Override
+            public CoroutineContext getContext() {
+                return EmptyCoroutineContext.INSTANCE;
+            }
+
+            @Override
+            @SuppressWarnings("KotlinInternalInJava")
+            public void resumeWith(@Nonnull Object o) {
+                if (o instanceof com.intellij.kubernetes.api.ContextsConfiguration configuration) {
+                    final Context context = configuration.getContexts().entrySet().stream()
+                            .filter(c -> StringUtils.equals(c.getKey().getName(), cluster.getName()))
+                            .findFirst()
+                            .map(Map.Entry::getValue)
+                            .orElse(null);
+                    future.set(context);
+                } else {
+                    future.set(null);
+                }
+            }
+        });
+        try {
+            return future.get();
+        } catch (final InterruptedException | ExecutionException e) {
+            return null;
+        }
     }
 
 }

@@ -5,11 +5,6 @@
 
 package com.microsoft.azure.toolkit.intellij.connector;
 
-import com.intellij.icons.AllIcons;
-import com.intellij.ide.DataManager;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
@@ -26,14 +21,15 @@ import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.ConnectionManager;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.Profile;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.ResourceManager;
-import com.microsoft.azure.toolkit.lib.Azure;
-import com.microsoft.azure.toolkit.lib.auth.AzureAccount;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.AzureActionManager;
 import com.microsoft.azure.toolkit.lib.common.form.AzureForm;
 import com.microsoft.azure.toolkit.lib.common.form.AzureFormInput;
+import com.microsoft.azure.toolkit.lib.common.model.AzResource;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import lombok.Getter;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -64,11 +60,18 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
     private TitledSeparator resourceTitle;
     private TitledSeparator consumerTitle;
     protected JTextField envPrefixTextField;
-    private HyperlinkLabel lblSignIn;
     private JPanel descriptionContainer;
     private JTextPane descriptionPane;
     private JPanel pnlEnvPrefix;
     private JLabel lblEnvPrefix;
+    private TitledSeparator titleAuthentication;
+    private JPanel pnlAuthentication;
+    private JPanel pnlUserAssignedManagedIdentity;
+    private AzureComboBox<AuthenticationType> cbAuthenticationType;
+    private UserAssignedManagedIdentityComboBox cbIdentity;
+    private JBLabel lblIdentity;
+    private JBLabel lblAuthType;
+    private SignInHyperLinkLabel signInHyperLinkLabel1;
     private ResourceDefinition<?> resourceDefinition;
     private ResourceDefinition<?> consumerDefinition;
 
@@ -90,7 +93,8 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
     @Override
     protected void init() {
         super.init();
-        this.lblSignIn.setVisible(!Azure.az(AzureAccount.class).isLoggedIn());
+        this.contentPane.setPreferredSize(new Dimension(600, -1));
+        this.contentPane.setMaximumSize(new Dimension(600, -1));
         final Action.Id<Connection<?, ?>> actionId = Action.Id.of("user/connector.create_or_update_connection.consumer|resource");
         this.setOkAction(new Action<>(actionId)
             .withLabel("Save")
@@ -105,6 +109,11 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
             }));
         this.consumerTypeSelector.addItemListener(this::onResourceOrConsumerTypeChanged);
         this.resourceTypeSelector.addItemListener(this::onResourceOrConsumerTypeChanged);
+        this.cbAuthenticationType.addItemListener(this::onAuthenticationTypeChanged);
+        this.cbAuthenticationType.addItemListener(ignore -> {
+            this.cbIdentity.setRequired(cbAuthenticationType.getValue() == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY);
+            this.cbIdentity.validateValueAsync();
+        });
         final Font font = UIManager.getFont("Label.font");
         final Color foregroundColor = UIManager.getColor("Label.foreground");
         final Color backgroundColor = UIManager.getColor("Label.backgroundColor");
@@ -122,6 +131,43 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
         }
         if (consumerDefinitions.size() == 1) {
             this.fixConsumerType(consumerDefinitions.get(0));
+        }
+
+        this.lblIdentity.setLabelFor(cbIdentity);
+        this.lblAuthType.setLabelFor(cbAuthenticationType);
+    }
+
+    private void onSelectResource(Object o) {
+        final AzureServiceResource<?> value = o instanceof AzureServiceResource ? (AzureServiceResource<?>) this.resourcePanel.getValue() : null;
+        final List<AuthenticationType> types = Optional.ofNullable(value).map(resourceDefinition::getSupportedAuthenticationTypes).orElse(Collections.emptyList());
+        final List<AuthenticationType> current = cbAuthenticationType.getItems();
+        if (!CollectionUtils.isEqualCollection(types, current)) {
+            updateAuthenticationTypes(types);
+        }
+        if (Objects.nonNull(value) && types.contains(AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY)) {
+            cbIdentity.setResource(value);
+        }
+    }
+
+    private void updateAuthenticationTypes(@Nonnull final List<AuthenticationType> types) {
+        final AuthenticationType current = cbAuthenticationType.getValue();
+        if (!types.contains(current)) {
+            this.cbAuthenticationType.clear();
+        }
+        this.cbAuthenticationType.setItemsLoader(() -> types);
+        this.cbAuthenticationType.reloadItems();
+    }
+
+    private void onAuthenticationTypeChanged(ItemEvent e) {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+            final AuthenticationType authenticationType = this.cbAuthenticationType.getValue();
+            this.pnlUserAssignedManagedIdentity.setVisible(authenticationType == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY);
+            if (authenticationType == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY) {
+                final Resource<?> value = (Resource<?>) this.resourcePanel.getValue();
+                if (value instanceof AzResource azResource) {
+                    cbIdentity.setSubscription(azResource.getSubscription());
+                }
+            }
         }
     }
 
@@ -203,6 +249,12 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
         if (resource.getDefinition().isEnvPrefixSupported()) {
             connection.setEnvPrefix(this.envPrefixTextField.getText().trim());
         }
+        connection.setAuthenticationType(cbAuthenticationType.getValue());
+        if (cbAuthenticationType.getValue() == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY) {
+            Optional.ofNullable(cbIdentity.getValue()).map(IdentityResource.Definition.INSTANCE::define).ifPresent(connection::setUserAssignedManagedIdentity);
+        } else {
+            connection.setUserAssignedManagedIdentity(null);
+        }
         return connection;
     }
 
@@ -212,6 +264,9 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
         this.setResource(connection.getResource());
         this.envPrefixTextField.setText(connection.getEnvPrefix());
         this.connection = connection;
+        // authentication
+        this.cbAuthenticationType.setValue(ObjectUtils.firstNonNull(connection.getAuthenticationType(), AuthenticationType.CONNECTION_STRING));
+        Optional.ofNullable(connection.getUserAssignedManagedIdentity()).map(Resource::getData).ifPresent(cbIdentity::setValue);
     }
 
     @Override
@@ -252,8 +307,14 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
             this.envPrefixTextField.setText(definition.getDefaultEnvPrefix());
             this.resourceTypeSelector.setValue(new ItemReference<>(definition.getName(), ResourceDefinition::getName));
             this.resourcePanel = this.updatePanel(definition, this.resourcePanelContainer);
+            Optional.ofNullable(this.resourcePanel).ifPresent(panel -> panel.addValueChangedListener(this::onSelectResource));
+
             this.lblEnvPrefix.setVisible(resourceDefinition.isEnvPrefixSupported());
             this.envPrefixTextField.setVisible(resourceDefinition.isEnvPrefixSupported());
+
+            final List<AuthenticationType> supportedAuthenticationTypes = definition.getSupportedAuthenticationTypes();
+            this.pnlAuthentication.setVisible(supportedAuthenticationTypes.size() > 1);
+            this.updateAuthenticationTypes(supportedAuthenticationTypes);
         }
     }
 
@@ -303,17 +364,37 @@ public class ConnectorDialog extends AzureDialog<Connection<?, ?>> implements Az
                 return Collections.emptyList();
             }
         };
+        this.cbIdentity = new UserAssignedManagedIdentityComboBox();
+        this.cbAuthenticationType = new AzureComboBox<>() {
+            @Nullable
+            @Override
+            protected AuthenticationType doGetDefaultValue() {
+                return AuthenticationType.SYSTEM_ASSIGNED_MANAGED_IDENTITY;
+            }
 
-        this.lblSignIn = new HyperlinkLabel();
-        this.lblSignIn.setHtmlText(NOT_SIGNIN_TIPS);
-        this.lblSignIn.setIcon(AllIcons.General.Information);
-        this.lblSignIn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        this.lblSignIn.addHyperlinkListener(e -> {
-            final DataContext context = DataManager.getInstance().getDataContext(this.lblSignIn);
-            final AnActionEvent event = AnActionEvent.createFromInputEvent(e.getInputEvent(), "ConnectorDialog", new Presentation(), context);
-            AzureActionManager.getInstance().getAction(Action.REQUIRE_AUTH)
-                .handle((a) -> this.lblSignIn.setVisible(!Azure.az(AzureAccount.class).isLoggedIn()), event);
-        });
+            @Override
+            protected synchronized void setItems(List<? extends AuthenticationType> items) {
+                final ComboBoxModel<AuthenticationType> model = getModel();
+                final AuthenticationType value = (AuthenticationType) model.getSelectedItem();
+                this.removeAllItems();
+                items.forEach(this::addItem);
+                if (CollectionUtils.isNotEmpty(items)) {
+                    model.setSelectedItem(items.contains(value) ? value : items.get(0));
+                }
+                this.refreshValue();
+            }
+
+            @Nonnull
+            @Override
+            protected List<ExtendableTextComponent.Extension> getExtensions() {
+                return Collections.emptyList();
+            }
+
+            @Override
+            protected String getItemText(Object item) {
+                return item instanceof AuthenticationType type ? type.getDisplayName() : super.getItemText(item);
+            }
+        };
     }
 
     public void setDescription(@Nonnull final String description) {

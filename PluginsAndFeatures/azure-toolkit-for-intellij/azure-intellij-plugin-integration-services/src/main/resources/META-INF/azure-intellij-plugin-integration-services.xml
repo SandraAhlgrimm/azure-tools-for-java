@@ -1,0 +1,15 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <serviceViewContributor
+                implementation="com.microsoft.azure.toolkit.intellij.integration.services.AzureServiceViewContributor"/>
+        <applicationService
+                serviceImplementation="com.microsoft.azure.toolkit.intellij.integration.services.AzureResourceManager"/>
+    </extensions>
+    <applicationListeners>
+        <listener class="com.microsoft.azure.toolkit.intellij.integration.services.AzureResourceManagerListener"
+                  topic="com.microsoft.azure.toolkit.intellij.integration.services.AzureResourceManager$Listener"/>
+    </applicationListeners>
+    <extensions defaultExtensionNs="com.microsoft.tooling.msservices.intellij.azure">
+        <actions implementation="com.microsoft.azure.toolkit.intellij.integration.services.AzureResourceActionsContributor"/>
+    </extensions>
+</idea-plugin>

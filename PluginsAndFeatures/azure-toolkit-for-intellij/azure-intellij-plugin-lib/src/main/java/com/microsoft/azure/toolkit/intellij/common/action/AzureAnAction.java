@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.toolkit.intellij.common.action;
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.microsoft.azure.toolkit.lib.common.messager.AzureMessager;
@@ -49,6 +50,11 @@ public abstract class AzureAnAction extends AnAction {
      * if the action is an asynchronous action, you should return false and control the operation completion by yourself
      */
     public abstract boolean onActionPerformed(@NotNull AnActionEvent anActionEvent, @Nullable Operation operation);
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
+    }
 
     @Override
     public final void actionPerformed(@NotNull AnActionEvent anActionEvent) {

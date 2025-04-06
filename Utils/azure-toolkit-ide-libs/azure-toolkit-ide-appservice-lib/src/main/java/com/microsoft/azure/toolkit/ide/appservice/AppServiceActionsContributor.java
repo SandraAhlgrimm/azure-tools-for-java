@@ -53,14 +53,14 @@ public class AppServiceActionsContributor implements IActionsContributor {
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof AppServiceAppBase)
             .enableWhen(s -> s.getFormalStatus().isConnected())
-            .withHandler(s -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle("https://" + s.getHostName()))
+            .withHandler((s, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle("https://" + s.getHostName(), e))
             .register(am);
 
         new Action<>(START_STREAM_LOG)
             .withLabel("Start Streaming Logs")
             .withIcon(AzureIcons.Action.LOG.getIconPath())
             .withIdParam(AzResource::getName)
-            .visibleWhen(s -> s instanceof AppServiceAppBase&& !(s instanceof FunctionApp functionApp && (StringUtils.isNotBlank(functionApp.getEnvironmentId()))))
+            .visibleWhen(s -> s instanceof AppServiceAppBase && !(s instanceof FunctionApp app && (app.isContainerHostingFunctionApp() || app.isFlexConsumptionApp())))
             .enableWhen(s -> s.getFormalStatus().isRunning())
             .register(am);
 
@@ -68,7 +68,7 @@ public class AppServiceActionsContributor implements IActionsContributor {
             .withLabel("Stop Streaming Logs")
             .withIcon(AzureIcons.Action.LOG.getIconPath())
             .withIdParam(AzResource::getName)
-            .visibleWhen(s -> s instanceof AppServiceAppBase&& !(s instanceof FunctionApp functionApp && (StringUtils.isNotBlank(functionApp.getEnvironmentId()))))
+            .visibleWhen(s -> s instanceof AppServiceAppBase && !(s instanceof FunctionApp app && (app.isContainerHostingFunctionApp() || app.isFlexConsumptionApp())))
             .enableWhen(s -> s.getFormalStatus().isRunning())
             .register(am);
 
@@ -100,17 +100,17 @@ public class AppServiceActionsContributor implements IActionsContributor {
             .withIcon(AzureIcons.Common.AZURE_MONITOR.getIconPath())
             .withIdParam(AzResource::getName)
             .visibleWhen(s -> s instanceof AppServiceAppBase)
-            .enableWhen(s -> s.getFormalStatus().isRunning() || (s instanceof FunctionApp function && StringUtils.isNotBlank(function.getEnvironmentId())))
+            .visibleWhen(s -> s instanceof AppServiceAppBase && !(s instanceof FunctionApp app && (app.isContainerHostingFunctionApp() || app.isFlexConsumptionApp())))
             .register(am);
 
         new Action<>(COPY_FULL_APP_SETTINGS)
             .withLabel("Copy All")
             .withIdParam(AppServiceAppBase::getName)
             .withIcon(AzureIcons.Action.COPY.getIconPath())
-            .withHandler(app -> {
+            .withHandler((app, e) -> {
                 final Map<String, String> variables = Optional.ofNullable(app.getAppSettings()).orElse(Collections.emptyMap());
                 final String str = variables.entrySet().stream().map(v -> String.format("%s=%s", v.getKey(), v.getValue())).collect(Collectors.joining(System.lineSeparator()));
-                AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.COPY_STRING).handle(str);
+                AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.COPY_STRING).handle(str, e);
                 AzureMessager.getMessager().success(AzureString.format("App settings of app (%s) has been copied into clipboard.", app.getName()));
             })
             .withAuthRequired(false)
@@ -129,9 +129,9 @@ public class AppServiceActionsContributor implements IActionsContributor {
         new Action<>(COPY_APP_SETTING)
                 .withLabel("Copy")
                 .withIcon(AzureIcons.Action.COPY.getIconPath())
-                .withHandler(entry -> {
+                .withHandler((entry, e) -> {
                     final String str = String.format("%s=%s", entry.getKey(), entry.getValue());
-                    AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.COPY_STRING).handle(str);
+                    AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.COPY_STRING).handle(str, e);
                     AzureMessager.getMessager().success(AzureString.format("App setting (%s) has been copied into clipboard.", entry.getKey()));
                 })
                 .withAuthRequired(false)
@@ -141,8 +141,8 @@ public class AppServiceActionsContributor implements IActionsContributor {
                 .withLabel("Copy Key")
                 .withIdParam(Map.Entry::getKey)
                 .withIcon(AzureIcons.Action.COPY.getIconPath())
-                .withHandler(entry -> {
-                    AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.COPY_STRING).handle(entry.getKey());
+                .withHandler((entry, e) -> {
+                    AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.COPY_STRING).handle(entry.getKey(), e);
                     AzureMessager.getMessager().success(AzureString.format("App setting key (%s) been copied into clipboard.", entry.getKey()));
                 })
                 .withAuthRequired(false)

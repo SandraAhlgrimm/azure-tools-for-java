@@ -11,9 +11,9 @@ import com.intellij.ide.util.TreeClassChooserFactory;
 import com.intellij.ide.util.TreeJavaClassChooserDialog;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.module.JavaModuleType;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
-import com.intellij.openapi.module.ModuleTypeId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.ModuleRootManager;
@@ -160,7 +160,7 @@ public class ManifestFileUtilsEx implements ILogger {
     private Module createJarPackingModule() {
         String moduleName = suggestModuleName(LOCAL_ARTIFACT_MODULE_NAME);
         File moduleFile = new File(myProject.getBasePath(), String.format("%s/%s.iml", moduleName, moduleName));
-        Module module = ModuleManager.getInstance(myProject).newModule(moduleFile.getPath(), ModuleTypeId.JAVA_MODULE);
+        Module module = ModuleManager.getInstance(myProject).newModule(moduleFile.getPath(), JavaModuleType.getModuleType().getId());
         return module;
     }
 }

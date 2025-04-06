@@ -69,5 +69,7 @@
 	{ "groupId": "com.theokanning.openai-gpt3-java", "artifactId": "client", "tag": "openai" },
 	{ "groupId": "com.theokanning.openai-gpt3-java", "artifactId": "service", "tag": "openai" },
 	// azure open ai
-	{ "groupId": "com.azure", "artifactId": "azure-ai-openai", "tag": "azure_openai" }
+	{ "groupId": "com.azure", "artifactId": "azure-ai-openai", "tag": "azure_openai" },
+	// azure functions
+	{ "groupId": "com.microsoft.azure.functions", "artifactId": "azure-functions-java-library", "tag": "functions" }
 ]

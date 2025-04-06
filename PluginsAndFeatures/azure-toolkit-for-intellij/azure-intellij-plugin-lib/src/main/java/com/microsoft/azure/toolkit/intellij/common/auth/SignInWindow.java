@@ -40,10 +40,10 @@ public class SignInWindow extends AzureDialogWrapper {
     private ButtonGroup authTypeGroup;
 
     public SignInWindow(Project project) {
-        super(project, true, IdeModalityType.PROJECT);
+        super(project, true, IdeModalityType.IDE);
         setModal(true);
         setTitle("Sign In");
-        setOKButtonText("Sign in");
+        setOKButtonText("Sign In");
         this.setOKActionEnabled(false);
         init();
         checkAccountAvailability();

@@ -131,7 +131,13 @@ public class IntelliJAzureIcons {
         return azureIcons.computeIfAbsent(azureIcon, IntelliJAzureIcons::getAzureIcon);
     }
 
+    @Nullable
     private static Icon getAzureIcon(@Nonnull AzureIcon azureIcon) {
-        return doGetIcon(AzureIcon.getIconPathWithModifier(azureIcon), azureIcon.getIconPath(), IntelliJAzureIcons.class);
+        final String pathWithModifier = AzureIcon.getIconPathWithModifier(azureIcon);
+        final String path = azureIcon.getIconPath();
+        if (StringUtils.isBlank(path)) {
+            return null;
+        }
+        return doGetIcon(pathWithModifier, path, IntelliJAzureIcons.class);
     }
 }

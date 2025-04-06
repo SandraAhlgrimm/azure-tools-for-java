@@ -42,8 +42,8 @@ allprojects {
     }
 
     ext {
-        azureToolkitLibsVersion = "0.42.0-SNAPSHOT"
-        azureToolkitIdeLibsVersion = "0.42.0-SNAPSHOT"
+        azureToolkitLibsVersion = "0.51.0"
+        azureToolkitIdeLibsVersion = "0.51.0"
     }
 
     dependencyManagement {
@@ -57,7 +57,7 @@ allprojects {
         // https://mvnrepository.com/artifact/org.projectlombok/lombok
         compileOnly 'org.projectlombok:lombok'
         annotationProcessor 'org.projectlombok:lombok'
-        implementation 'com.microsoft.azure:azure-toolkit-common-lib'
+        implementation("com.microsoft.azure:azure-toolkit-common-lib")
         aspect 'com.microsoft.azure:azure-toolkit-common-lib'
         compileOnly 'org.jetbrains:annotations'
     }
@@ -96,13 +96,13 @@ subprojects {
 intellij {
     pluginName = 'azure-intellij-plugin-base'
     version = intellij_version
-    plugins = ['java', 'maven', 'maven-model', 'gradle', dep_plugins]
+    plugins = ['java', 'maven', 'maven-model', 'gradle', scala_plugin]
     downloadSources = Boolean.valueOf(sources)
 }
 
 dependencies {
-    implementation 'com.microsoft.azure:azure-toolkit-auth-lib'
-    implementation 'com.microsoft.azure:azure-toolkit-ide-common-lib'
+    implementation("com.microsoft.azure:azure-toolkit-auth-lib")
+    implementation("com.microsoft.azure:azure-toolkit-ide-common-lib")
 
     implementation project(path: ':azure-intellij-plugin-lib', configuration: 'instrumentedJar')
     implementation project(path: ':azure-intellij-plugin-lib-java', configuration: 'instrumentedJar')

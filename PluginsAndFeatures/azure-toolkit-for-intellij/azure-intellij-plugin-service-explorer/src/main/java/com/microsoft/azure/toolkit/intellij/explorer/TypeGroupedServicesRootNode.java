@@ -36,7 +36,7 @@ public class TypeGroupedServicesRootNode extends Node<Azure> {
         this.onAuthEvent();
     }
 
-    private void onAuthEvent() {
+    protected void onAuthEvent() {
         final AzureAccount az = Azure.az(AzureAccount.class);
         final String desc;
         if (az.isLoggingIn()) {

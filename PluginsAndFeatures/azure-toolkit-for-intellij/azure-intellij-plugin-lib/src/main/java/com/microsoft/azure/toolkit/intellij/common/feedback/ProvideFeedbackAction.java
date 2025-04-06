@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.toolkit.intellij.common.feedback;
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.DumbAware;
@@ -12,6 +13,7 @@ import com.intellij.openapi.util.Key;
 import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
 import com.microsoft.azure.toolkit.lib.common.operation.OperationContext;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
@@ -27,5 +29,10 @@ public class ProvideFeedbackAction extends AnAction implements DumbAware {
     public void actionPerformed(@Nonnull AnActionEvent event) {
         OperationContext.current().setTelemetryProperty(PLACE, StringUtils.firstNonBlank(event.getPlace(), EMPTY_PLACE));
         MonkeySurvey.openInIDE(Objects.requireNonNull(event.getProject()));
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 }

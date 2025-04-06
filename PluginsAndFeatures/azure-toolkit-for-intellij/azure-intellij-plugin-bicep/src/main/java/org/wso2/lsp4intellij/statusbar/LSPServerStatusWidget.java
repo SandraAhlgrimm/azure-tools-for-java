@@ -17,10 +17,7 @@
 package org.wso2.lsp4intellij.statusbar;
 
 import com.intellij.ide.DataManager;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
@@ -180,6 +177,11 @@ public class LSPServerStatusWidget implements StatusBarWidget {
                     .forEach(f -> connectedFiles.append(System.lineSeparator()).append(f));
                 Messages.showInfoMessage(connectedFiles.toString(), "Connected Files");
             }
+
+            @Override
+            public @NotNull ActionUpdateThread getActionUpdateThread() {
+                return ActionUpdateThread.BGT;
+            }
         }
 
         class ShowTimeouts extends AnAction implements DumbAware {
@@ -212,6 +214,11 @@ public class LSPServerStatusWidget implements StatusBarWidget {
                 message.append("</html>");
                 Messages.showInfoMessage(message.toString(), "Timeouts");
             }
+
+            @Override
+            public @NotNull ActionUpdateThread getActionUpdateThread() {
+                return ActionUpdateThread.BGT;
+            }
         }
 
         class Restart extends AnAction implements DumbAware {
@@ -228,6 +235,11 @@ public class LSPServerStatusWidget implements StatusBarWidget {
             @Override
             public void update(@NotNull AnActionEvent e) {
                 e.getPresentation().setEnabled(ObjectUtils.allNotNull(e.getProject(), LanguageServerWrapper.forProject(e.getProject())));
+            }
+
+            @Override
+            public @NotNull ActionUpdateThread getActionUpdateThread() {
+                return ActionUpdateThread.BGT;
             }
         }
 

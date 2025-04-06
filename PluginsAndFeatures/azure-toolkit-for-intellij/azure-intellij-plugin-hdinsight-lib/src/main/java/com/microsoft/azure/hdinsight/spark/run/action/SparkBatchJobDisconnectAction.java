@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.hdinsight.spark.run.action;
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Presentation;
@@ -14,6 +15,7 @@ import com.microsoft.azure.hdinsight.spark.run.SparkBatchJobSubmittedEvent;
 import com.microsoft.azuretools.telemetrywrapper.EventType;
 import com.microsoft.azuretools.telemetrywrapper.EventUtil;
 import com.microsoft.azuretools.telemetrywrapper.Operation;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -74,5 +76,10 @@ public class SparkBatchJobDisconnectAction extends AnAction {
         Presentation presentation = e.getPresentation();
 
         presentation.setEnabled(isEnabled);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 }

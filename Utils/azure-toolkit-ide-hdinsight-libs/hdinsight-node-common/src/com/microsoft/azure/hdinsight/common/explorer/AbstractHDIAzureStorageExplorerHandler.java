@@ -93,25 +93,25 @@ public abstract class AbstractHDIAzureStorageExplorerHandler {
         final AzureActionManager am = AzureActionManager.getInstance();
         final Action.Id<IClusterDetail> OPEN = Action.Id.of("user/storage.open_portal_storage_browser.account");
         final Action<IClusterDetail> openInAzureAction = new Action<>(OPEN)
-            .withLabel("Open in Azure")
+            .withLabel("Open in Portal")
             .withIcon(AzureIcons.Action.PORTAL.getIconPath())
             .withIdParam(IClusterDetail::getName)
             .enableWhen(s -> s instanceof IClusterDetail)
-            .withHandler(ignore -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(getPortalUrl(clusterDetail) + "/storagebrowser"))
+            .withHandler((ignore, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(getPortalUrl(clusterDetail) + "/storagebrowser", e))
             .withAuthRequired(false);
 
         final Action.Id<Void> DOWNLOAD = Action.Id.of("user/storage.download_explorer");
         final Action<Void> downloadAction = new Action<>(DOWNLOAD)
             .withLabel("Download")
-            .withHandler(ignore -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(STORAGE_EXPLORER_DOWNLOAD_URL))
+            .withHandler((ignore, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(STORAGE_EXPLORER_DOWNLOAD_URL, e))
             .withAuthRequired(false);
 
         final Action.Id<Void> CONFIG = Action.Id.of("user/storage.config_explorer_path");
         final Action<Void> configureAction = new Action<>(CONFIG)
             .withLabel("Configure")
-            .withHandler(ignore -> {
+            .withHandler((ignore, e) -> {
                 final Action<Object> openSettingsAction = am.getAction(ResourceCommonActionsContributor.OPEN_AZURE_SETTINGS);
-                final ActionInstance<Object> instance = openSettingsAction.instantiate(null, null);
+                final ActionInstance<Object> instance = openSettingsAction.instantiate(null, e);
                 Objects.requireNonNull(instance).perform(); // Open Azure Settings Panel sync
                 if (StringUtils.isNotBlank(Azure.az().config().getStorageExplorerPath())) {
                     openResource(clusterDetail);

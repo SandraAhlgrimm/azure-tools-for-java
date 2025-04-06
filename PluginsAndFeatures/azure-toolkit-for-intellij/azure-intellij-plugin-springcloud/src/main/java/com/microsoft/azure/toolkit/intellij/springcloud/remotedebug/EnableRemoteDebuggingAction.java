@@ -78,6 +78,6 @@ public class EnableRemoteDebuggingAction {
     private static Action<?> generateLearnMoreAction() {
         return new Action<>(Action.Id.of("user/springcloud.learn_more_dialog"))
             .withLabel("Learn More")
-            .withHandler(s -> AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.OPEN_URL).handle(REMOTE_DEBUGGING_DOCS));
+            .withHandler((s, e) -> AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.OPEN_URL).handle(REMOTE_DEBUGGING_DOCS, e));
     }
 }

@@ -70,7 +70,7 @@ public class IntelliJServiceBusActionsContributor implements IActionsContributor
         final BiPredicate<ServiceBusInstance<?, ?, ?>, AnActionEvent> condition = (r, e) -> true;
         final BiConsumer<ServiceBusInstance<?, ?, ?>, AnActionEvent> handler = (c, e) -> {
             final String connectionString = c.getOrCreateListenConnectionString();
-            am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(connectionString);
+            am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(connectionString, e);
             AzureMessager.getMessager().info(AzureBundle.message("azure.servicebus.info.copyConnectionString"), null, generateConfigAction(c));
         };
         am.registerHandler(ServiceBusActionsContributor.COPY_CONNECTION_STRING, condition, handler);
@@ -100,7 +100,7 @@ public class IntelliJServiceBusActionsContributor implements IActionsContributor
         final BiConsumer<Object, AnActionEvent> handler = (c, e) -> {
             final IAccount account = Azure.az(IAzureAccount.class).account();
             final String url = String.format("%s/#create/Microsoft.ServiceBus", account.getPortalUrl());
-            am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(url, null);
+            am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(url, e);
         };
         am.registerHandler(ServiceBusActionsContributor.GROUP_CREATE_SERVICE_BUS, (r, e) -> true, (r, e) -> handler.accept(r, (AnActionEvent) e));
     }
@@ -109,7 +109,7 @@ public class IntelliJServiceBusActionsContributor implements IActionsContributor
         final BiPredicate<ServiceBusNamespace, AnActionEvent> condition = (r, e) -> true;
         final BiConsumer<ServiceBusNamespace, AnActionEvent> handler = (c, e) -> {
             final String connectionString = c.getOrCreateConnectionString();
-            am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(connectionString);
+            am.getAction(ResourceCommonActionsContributor.COPY_STRING).handle(connectionString, e);
             AzureMessager.getMessager().info(AzureBundle.message("azure.servicebus.info.copyConnectionString"), null, generateConfigAction(c));
         };
         am.registerHandler(ServiceBusActionsContributor.COPY_NAMESPACE_CONNECTION_STRING, condition, handler);
@@ -119,7 +119,7 @@ public class IntelliJServiceBusActionsContributor implements IActionsContributor
         final String sasKeyUrl = String.format("%s/saskey", resource.getPortalUrl());
         return new Action<>(Action.Id.of("user/servicebus.config_shared_access_key"))
                 .withLabel("Configure in Azure Portal")
-                .withHandler(s -> AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.OPEN_URL).handle(sasKeyUrl));
+                .withHandler((s, e) -> AzureActionManager.getInstance().getAction(ResourceCommonActionsContributor.OPEN_URL).handle(sasKeyUrl, e));
     }
 
     @Override

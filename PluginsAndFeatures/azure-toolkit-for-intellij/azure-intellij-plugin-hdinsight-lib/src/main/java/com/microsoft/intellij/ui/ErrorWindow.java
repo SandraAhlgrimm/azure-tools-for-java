@@ -32,7 +32,7 @@ public class ErrorWindow extends AzureDialogWrapper {
     }
 
     protected ErrorWindow(@Nullable Project project, String message, String title, String okButtonText, Runnable okAction) {
-        super(project, true, IdeModalityType.PROJECT);
+        super(project, true, IdeModalityType.IDE);
         setModal(true);
         if (title != null && !title.isEmpty()) {
             setTitle(title);

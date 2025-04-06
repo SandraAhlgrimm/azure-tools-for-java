@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.intellij.azuresdk.model.AzureJavaSdkEntity;
 import com.microsoft.azure.toolkit.intellij.azuresdk.model.WorkspaceTagEntity;
 import com.microsoft.azure.toolkit.lib.common.cache.Cacheable;
@@ -21,6 +22,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,8 +31,15 @@ public class WorkspaceTaggingService {
     private static final ObjectMapper JSON_MAPPER = new JsonMapper().configure(JsonParser.Feature.ALLOW_COMMENTS, true);
     private static final String WORKSPACE_TAG_JSON = "/workspaceTag.json";
 
+    public static Set<String> getWorkspaceTags(@Nonnull final Project project) {
+        return ProjectLibraryService.getProjectLibraries(project).stream()
+            .flatMap(l -> WorkspaceTaggingService.getWorkspaceTags(l.getGroupId(), l.getArtifactId()).stream()).filter(Objects::nonNull)
+            .filter(StringUtils::isNotBlank)
+            .collect(Collectors.toSet());
+    }
+
     @Nonnull
-    public static Set<String> getWorkspaceTags(@Nonnull String groupId, @Nonnull final String artifactId) {
+    private static Set<String> getWorkspaceTags(@Nonnull String groupId, @Nonnull final String artifactId) {
         final HashSet<String> tags = new HashSet<>();
         if (StringUtils.isAnyEmpty(groupId, artifactId)) {
             return tags;

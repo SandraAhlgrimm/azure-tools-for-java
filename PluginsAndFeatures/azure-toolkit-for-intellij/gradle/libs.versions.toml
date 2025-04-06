@@ -1,0 +1,25 @@
+[versions]
+# libraries
+
+# plugins
+kotlin = "2.1.0"
+changelog = "2.2.0"
+intellijPlatform = "2.3.0"
+detekt = "1.23.6"
+ktlint = "12.1.1"
+#gradleIntelliJPlugin = "1.17.3"
+#qodana = "2024.1.5"
+aspectj = "8.6"
+springDependencyManagement = "1.0.11.RELEASE"
+serialization = "1.9.24"
+
+[plugins]
+changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version.ref = "intellijPlatform" }
+intellijPlatformModule = { id = "org.jetbrains.intellij.platform.module", version.ref = "intellijPlatform" }
+kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+aspectj = { id = "io.freefair.aspectj.post-compile-weaving", version.ref = "aspectj" }
+springDependencyManagement = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
+serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serialization" }

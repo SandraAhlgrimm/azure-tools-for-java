@@ -5,7 +5,6 @@
 
 package com.microsoft.azure.toolkit.intellij.azuresdk.service;
 
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.EnvironmentUtil;
 import org.apache.commons.lang3.StringUtils;
@@ -49,7 +48,7 @@ public class MachineTaggingService {
     );
 
     @Nonnull
-    public static Set<String> getMachineTags(final Project project) {
+    public static Set<String> getMachineTags() {
         final List<Path> paths = getPathNames();
         return EXECUTABLES.stream()
             .filter(it -> hasToolInLocalPath(paths, it)).collect(Collectors.toSet());

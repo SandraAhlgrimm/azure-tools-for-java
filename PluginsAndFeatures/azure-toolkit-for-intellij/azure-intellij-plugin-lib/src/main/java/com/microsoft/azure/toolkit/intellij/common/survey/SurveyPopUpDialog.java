@@ -14,8 +14,8 @@ import com.intellij.ui.JBColor;
 import com.intellij.util.Consumer;
 import com.intellij.util.messages.MessageBusConnection;
 import com.microsoft.azure.toolkit.intellij.common.AzureActionButton;
+import com.microsoft.azure.toolkit.intellij.common.component.UIUtils;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 
 import javax.annotation.Nonnull;
@@ -101,7 +101,7 @@ public class SurveyPopUpDialog extends JDialog {
 
         // Add listener to intellij theme change
         renderUiByTheme(LafManager.getInstance());
-        connection.subscribe(LafManagerListener.TOPIC, (LafManagerListener) manager -> renderUiByTheme(manager));
+        connection.subscribe(LafManagerListener.TOPIC, (LafManagerListener) this::renderUiByTheme);
 
         this.pack();
         this.disposeTimer.restart();
@@ -112,13 +112,12 @@ public class SurveyPopUpDialog extends JDialog {
         if (SystemUtils.IS_OS_MAC) {
             return;
         }
-        final UIManager.LookAndFeelInfo theme = manager.getCurrentLookAndFeel();
-        if (StringUtils.containsIgnoreCase(theme.getName(), "light")) {
+        if (UIUtils.isUnderLightTheme()) {
             setPanelBackGroundColor(contentPane, JBColor.WHITE);
             final ButtonUI buttonUI = new MetalButtonUI();
             giveFeedbackButton.setUI(buttonUI);
             giveFeedbackButton.setForeground(Gray._255);
-            giveFeedbackButton.setBackground(new Color(0, 114, 198));
+            giveFeedbackButton.setBackground(new JBColor(new Color(0, 114, 198), JBColor.BLUE));
             notNowButton.setUI(buttonUI);
             notNowButton.setForeground(Gray._255);
             notNowButton.setBackground(Gray._105);

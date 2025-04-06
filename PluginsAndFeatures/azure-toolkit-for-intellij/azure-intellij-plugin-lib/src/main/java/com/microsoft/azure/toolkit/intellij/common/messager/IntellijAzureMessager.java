@@ -5,15 +5,15 @@
 
 package com.microsoft.azure.toolkit.intellij.common.messager;
 
-import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationAction;
-import com.intellij.notification.NotificationListener;
-import com.intellij.notification.NotificationType;
-import com.intellij.notification.Notifications;
+import com.intellij.notification.*;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.MessageDialogBuilder;
+import com.intellij.openapi.util.registry.Registry;
 import com.microsoft.azure.toolkit.ide.common.action.ResourceCommonActionsContributor;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.bundle.AzureString;
@@ -31,22 +31,19 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URIBuilder;
 import org.jetbrains.annotations.NotNull;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.event.HyperlinkEvent;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import static com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter.OPERATION_NAME;
-import static com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter.OP_NAME;
-import static com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter.OP_TYPE;
-import static com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter.SERVICE_NAME;
+import static com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter.*;
 
 @Slf4j
 public class IntellijAzureMessager implements IAzureMessager {
@@ -59,7 +56,11 @@ public class IntellijAzureMessager implements IAzureMessager {
         Map.entry(IAzureMessage.Type.ERROR, NotificationType.ERROR)
     );
 
-    private Notification createNotification(@Nonnull String title, @Nonnull String content, NotificationType type) {
+    public IntellijAzureMessager() {
+        Scheduler.start();
+    }
+
+    private static Notification createNotification(@Nonnull String title, @Nonnull String content, NotificationType type) {
         return new Notification(NOTIFICATION_GROUP_ID, title, content, type, new NotificationListener.UrlOpeningListener(false) {
             @Override
             @SneakyThrows
@@ -107,27 +108,45 @@ public class IntellijAzureMessager implements IAzureMessager {
             case DEBUG -> {
                 return true;
             }
+            case PROGRESS -> {
+                final ProgressManager manager = ProgressManager.getInstance();
+                final ProgressIndicator indicator = manager.getProgressIndicator();
+                if (Objects.nonNull(indicator)) {
+                    indicator.setText2(raw.getContent());
+                    return false;
+                }
+                return true;
+            }
             default -> {
             }
         }
-        this.showNotification(raw);
+        final IntellijAzureMessage message = (IntellijAzureMessage) raw;
+        final Project project = message.getProject();
+        if (message.getDelay() != null) {
+            Mono.delay(message.getDelay()).subscribe(next -> showNotification(message));
+        } else if (message.getPriority() > 0) {
+            Scheduler.push(message);
+        } else {
+            showNotification(message);
+        }
         return true;
     }
 
     @Override
-    public IntellijAzureMessage buildMessage(@Nonnull IAzureMessage.Type type, @Nonnull AzureString content, @Nullable String title, @Nullable Object[] actions, @Nullable Object payload) {
+    public AzureMessage buildMessage(@Nonnull IAzureMessage.Type type, @Nonnull AzureString content, @Nullable String title, @Nullable Object[] actions, @Nullable Object payload) {
         final AzureMessage message = IAzureMessager.super.buildMessage(type, content, title, actions, payload);
-        if (type == IAzureMessage.Type.ALERT || type == IAzureMessage.Type.CONFIRM) {
+        if (type == IAzureMessage.Type.PROGRESS) {
+            return message;
+        } else if (type == IAzureMessage.Type.ALERT || type == IAzureMessage.Type.CONFIRM) {
             return new DialogMessage(message);
         }
         return new NotificationMessage(message);
     }
 
-    private void showNotification(@Nonnull IAzureMessage raw) {
-        final IntellijAzureMessage message = (IntellijAzureMessage) raw;
+    private static void showNotification(@Nonnull IntellijAzureMessage message) {
         final NotificationType type = types.get(message.getType());
         final String content = message.getContent();
-        final Notification notification = this.createNotification(message.getTitle(), content, type);
+        final Notification notification = createNotification(message.getTitle(), content, type);
         final Collection<NotificationAction> actions = Arrays.stream(message.getActions())
             .map(a -> ImmutablePair.of(a, a.getView(null)))
             .filter(p -> p.getValue().isVisible())
@@ -142,12 +161,45 @@ public class IntellijAzureMessager implements IAzureMessager {
                 }
             }).collect(Collectors.toList());
         notification.addActions(actions);
+        if (Objects.nonNull(message.getProject()) && message.getProject().isDisposed()) {
+            return;
+        }
         Notifications.Bus.notify(notification, message.getProject());
     }
 
     public static class Provider implements AzureMessagerProvider {
         public IAzureMessager getMessager() {
             return ApplicationManager.getApplication().getService(IAzureMessager.class);
+        }
+    }
+
+    static class Scheduler {
+        private static volatile long lastTime = -1;
+        private static final PriorityQueue<IntellijAzureMessage> queue = new PriorityQueue<>(Comparator.comparing(IntellijAzureMessage::getPriority));
+        private static final int MINUTE = 60 * 1000;
+        private static final int[] INTERVALS = new int[]{5 * 1000, 5 * MINUTE, 30 * MINUTE, 60 * MINUTE};
+        private static final AtomicBoolean started = new AtomicBoolean(false);
+
+        static void start() {
+            if (started.compareAndSet(false, true)) {
+                Mono.delay(Duration.ofSeconds(5))
+                    .thenMany(Flux.interval(Duration.ofMinutes(2)).onBackpressureBuffer())
+                    .doOnNext(m -> {
+                        final IntellijAzureMessage message = queue.peek();
+                        if (message != null) {
+                            final int delay = lastTime < 0 || Registry.is("ide.debugMode") ? 5 * 1000 : INTERVALS[message.getPriority()]; // show message immediately(5s delayed) if it's the first message
+                            if (lastTime + delay < System.currentTimeMillis()) {
+                                queue.poll();
+                                lastTime = System.currentTimeMillis();
+                                showNotification(message);
+                            }
+                        }
+                    }).subscribe();
+            }
+        }
+
+        static void push(IntellijAzureMessage message) {
+            queue.add(message);
         }
     }
 }

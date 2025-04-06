@@ -66,7 +66,7 @@ public class SrvPriSettingsDialog extends AzureDialogWrapper {
     }
 
     private SrvPriSettingsDialog(List<Subscription> sdl, Project project) {
-        super(project, true, IdeModalityType.PROJECT);
+        super(project, true, IdeModalityType.IDE);
         this.sdl = sdl;
         this.project = project;
 

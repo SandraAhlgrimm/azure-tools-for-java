@@ -1,12 +1,15 @@
 package com.microsoft.azure.toolkit.intellij.cosmos.connection;
 
+import com.azure.resourcemanager.authorization.models.BuiltInRole;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.intellij.common.AzureFormJPanel;
+import com.microsoft.azure.toolkit.intellij.connector.AuthenticationType;
 import com.microsoft.azure.toolkit.intellij.connector.AzureServiceResource;
 import com.microsoft.azure.toolkit.intellij.connector.Connection;
 import com.microsoft.azure.toolkit.intellij.connector.Resource;
-import com.microsoft.azure.toolkit.intellij.connector.function.FunctionSupported;
+import com.microsoft.azure.toolkit.intellij.connector.function.ManagedIdentityFunctionSupported;
+import com.microsoft.azure.toolkit.intellij.connector.spring.SpringManagedIdentitySupported;
 import com.microsoft.azure.toolkit.intellij.connector.spring.SpringSupported;
 import com.microsoft.azure.toolkit.lib.Azure;
 import com.microsoft.azure.toolkit.lib.common.model.Subscription;
@@ -18,16 +21,13 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SqlCosmosDBAccountResourceDefinition extends AzureServiceResource.Definition<SqlDatabase>
-    implements SpringSupported<SqlDatabase>, FunctionSupported<SqlDatabase> {
+        implements SpringSupported<SqlDatabase>, ManagedIdentityFunctionSupported<SqlDatabase>, SpringManagedIdentitySupported<SqlDatabase> {
     public static final SqlCosmosDBAccountResourceDefinition INSTANCE = new SqlCosmosDBAccountResourceDefinition();
 
     public SqlCosmosDBAccountResourceDefinition() {
@@ -35,7 +35,7 @@ public class SqlCosmosDBAccountResourceDefinition extends AzureServiceResource.D
     }
 
     @Override
-    public SqlDatabase getResource(String dataId) {
+    public SqlDatabase getResource(String dataId, final String id) {
         return Azure.az(AzureCosmosService.class).getById(dataId);
     }
 
@@ -95,5 +95,61 @@ public class SqlCosmosDBAccountResourceDefinition extends AzureServiceResource.D
     @Override
     public String getResourceConnectionString(@Nonnull SqlDatabase resource) {
         return resource.getModule().getParent().getCosmosDBAccountPrimaryConnectionString().getConnectionString();
+    }
+
+    @Override
+    public Map<String, String> initIdentityEnv(Connection<SqlDatabase, ?> data, Project project) {
+        final SqlDatabase database = data.getResource().getData();
+        final CosmosDBAccount account = database.getParent();
+        final HashMap<String, String> env = new HashMap<>();
+        env.put(String.format("%s_ENDPOINT", Connection.ENV_PREFIX), account.getDocumentEndpoint());
+        env.put(String.format("%s_DATABASE", Connection.ENV_PREFIX), database.getName());
+        if (data.getAuthenticationType() == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY) {
+            Optional.ofNullable(data.getUserAssignedManagedIdentity()).map(Resource::getData).ifPresent(identity -> {
+                env.put(String.format("%s_CLIENT_ID", Connection.ENV_PREFIX), identity.getClientId());
+                env.put("AZURE_CLIENT_ID", identity.getClientId());
+            });
+        }
+        return env;
+    }
+
+    @Override
+    public List<String> getRequiredPermissions() {
+        return List.of("Microsoft.DocumentDB/databaseAccounts/readMetadata",
+                "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*",
+                "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*");
+    }
+
+    @Nullable
+    @Override
+    public Map<String, BuiltInRole> getBuiltInRoles() {
+        return null;
+    }
+
+    @Override
+    public List<Pair<String, String>> getSpringPropertiesForManagedIdentity(String key, Connection<?, ?> connection) {
+        final List<Pair<String, String>> properties = new ArrayList<>();
+        properties.add(Pair.of("spring.cloud.azure.cosmos.endpoint", String.format("${%s_ENDPOINT}", Connection.ENV_PREFIX)));
+        properties.add(Pair.of("spring.cloud.azure.cosmos.database", String.format("${%s_DATABASE}", Connection.ENV_PREFIX)));
+        // properties.add(Pair.of("spring.cloud.azure.cosmos.credential.managed-identity-enabled", String.valueOf(true)));
+        if (connection.getAuthenticationType() == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY) {
+            properties.add(Pair.of("spring.cloud.azure.cosmos.credential.client-id", String.format("${%s_CLIENT_ID}", Connection.ENV_PREFIX)));
+        }
+        return properties;
+    }
+
+    @Override
+    public Map<String, String> getPropertiesForIdentityFunction(@Nonnull Connection<?, ?> connection) {
+        final Map<String, String> result = new HashMap<>();
+        final SqlDatabase data = (SqlDatabase)connection.getResource().getData();
+        // result.put(String.format("%s__accountName", connection.getEnvPrefix()), data.getName());
+        result.put(String.format("%s__accountEndpoint", connection.getEnvPrefix()), data.getParent().getDocumentEndpoint());
+        result.put(String.format("%s__credential", connection.getEnvPrefix()), "managedidentity");
+        if (connection.getAuthenticationType() == AuthenticationType.USER_ASSIGNED_MANAGED_IDENTITY) {
+            Optional.ofNullable(connection.getUserAssignedManagedIdentity()).map(Resource::getData).ifPresent(identity -> {
+                result.put(String.format("%s__clientId", connection.getEnvPrefix()), identity.getClientId());
+            });
+        }
+        return result;
     }
 }

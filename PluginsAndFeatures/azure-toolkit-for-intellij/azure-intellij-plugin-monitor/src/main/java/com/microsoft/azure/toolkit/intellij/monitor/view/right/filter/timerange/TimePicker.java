@@ -1,7 +1,6 @@
 package com.microsoft.azure.toolkit.intellij.monitor.view.right.filter.timerange;
 
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.util.UserDataHolder;
 import com.intellij.util.ui.JBUI;
 import com.michaelbaranov.microba.calendar.DatePicker;
 import com.michaelbaranov.microba.calendar.resource.Resource;

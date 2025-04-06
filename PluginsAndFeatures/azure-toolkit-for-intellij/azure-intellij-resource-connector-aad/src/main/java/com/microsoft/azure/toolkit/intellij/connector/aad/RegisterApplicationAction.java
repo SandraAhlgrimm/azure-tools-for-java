@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.toolkit.intellij.connector.aad;
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
@@ -22,6 +23,7 @@ import com.microsoft.graph.models.WebApplication;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
@@ -53,6 +55,11 @@ public class RegisterApplicationAction extends AnAction {
             log.debug("user is not signed in", ex);
             e.getPresentation().setEnabled(false);
         }
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 
     @Override

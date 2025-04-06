@@ -6,6 +6,7 @@
 package com.microsoft.azure.toolkit.intellij.common.action;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.DumbAware;
@@ -30,6 +31,11 @@ public class ViewDevBlogsAction extends AnAction implements DumbAware {
     @AzureOperation(name = "user/common.view_dev_blogs")
     public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
         OperationContext.current().setTelemetryProperty(PLACE, StringUtils.firstNonBlank(anActionEvent.getPlace(), EMPTY_PLACE));
-        AzureActionManager.getInstance().getAction(OPEN_URL).handle(DEV_BLOGS_URL);
+        AzureActionManager.getInstance().getAction(OPEN_URL).handle(DEV_BLOGS_URL, anActionEvent);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 }

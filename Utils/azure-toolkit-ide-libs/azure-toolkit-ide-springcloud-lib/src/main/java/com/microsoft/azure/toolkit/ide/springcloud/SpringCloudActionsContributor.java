@@ -49,7 +49,7 @@ public class SpringCloudActionsContributor implements IActionsContributor {
             .withIcon(AzureIcons.Action.BROWSER.getIconPath())
             .withIdParam(AbstractAzResource::getName)
             .withShortcut("control alt P")
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 final String msg = String.format("App \"%s\" is not publicly accessible. Do you want to assign it a public endpoint?", s.getName());
                 if (!s.isPublicEndpointEnabled() && AzureMessager.getMessager().confirm(msg)) {
                     final SpringCloudAppDraft update = (SpringCloudAppDraft) s.update();
@@ -57,7 +57,7 @@ public class SpringCloudActionsContributor implements IActionsContributor {
                     update.commit();
                 }
                 if (s.isPublicEndpointEnabled()) {
-                    am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(s.getApplicationUrl());
+                    am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(s.getApplicationUrl(), e);
                 }
             })
             .register(am);
@@ -68,7 +68,7 @@ public class SpringCloudActionsContributor implements IActionsContributor {
             .withLabel("Access Test Endpoint")
             .withIcon(AzureIcons.Action.BROWSER.getIconPath())
             .withIdParam(AbstractAzResource::getName)
-            .withHandler(s -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(s.getTestUrl()))
+            .withHandler((s, e) -> am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(s.getTestUrl(), e))
             .register(am);
 
         new Action<>(STREAM_LOG_APP)

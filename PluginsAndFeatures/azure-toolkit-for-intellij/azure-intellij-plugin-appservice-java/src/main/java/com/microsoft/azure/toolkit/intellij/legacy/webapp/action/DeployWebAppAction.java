@@ -12,11 +12,13 @@ import com.intellij.execution.configurations.ConfigurationFactory;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.executors.DefaultRunExecutor;
 import com.intellij.execution.impl.RunDialog;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
+import com.microsoft.azure.toolkit.intellij.common.AzureArtifactManager;
 import com.microsoft.azure.toolkit.intellij.common.auth.AzureLoginHelper;
 import com.microsoft.azure.toolkit.intellij.legacy.webapp.runner.WebAppConfigurationType;
 import com.microsoft.azure.toolkit.intellij.legacy.webapp.runner.webappconfig.WebAppConfiguration;
@@ -25,6 +27,7 @@ import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
 import com.microsoft.azure.toolkit.lib.common.operation.OperationContext;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -52,6 +55,11 @@ public class DeployWebAppAction extends AnAction {
                 AzureLoginHelper.requireSignedIn(project, (a) -> deploy(project));
             }
         });
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 
     public static void deploy(@Nonnull final WebApp webApp, @Nonnull final Project project) {
@@ -95,8 +103,12 @@ public class DeployWebAppAction extends AnAction {
             settings = manager.createConfiguration(runConfigurationName, factory);
         }
         final RunConfiguration runConfiguration = settings.getConfiguration();
-        if (runConfiguration instanceof WebAppConfiguration && Objects.nonNull(webApp)) {
-            ((WebAppConfiguration) runConfiguration).setWebApp(webApp);
+        if (runConfiguration instanceof WebAppConfiguration configuration && Objects.nonNull(webApp)) {
+            configuration.setWebApp(webApp);
+            AzureArtifactManager.getInstance(project).getAllSupportedAzureArtifacts()
+                    .stream().filter(azureArtifact -> Objects.equals(azureArtifact.getModule(), module))
+                    .findFirst()
+                    .ifPresent(configuration::setArtifact);
         }
         return settings;
     }

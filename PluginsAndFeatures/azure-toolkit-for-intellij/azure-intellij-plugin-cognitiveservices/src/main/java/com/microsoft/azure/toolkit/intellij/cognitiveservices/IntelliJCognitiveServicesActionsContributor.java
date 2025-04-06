@@ -63,6 +63,15 @@ public class IntelliJCognitiveServicesActionsContributor implements IActionsCont
         am.registerHandler(CognitiveServicesActionsContributor.OPEN_DEPLOYMENT_IN_PLAYGROUND, deploymentCondition, openDeploymentHandler);
     }
 
+    @Override
+    public void registerActions(final AzureActionManager am) {
+        new Action<>(TRY_OPENAI)
+            .withLabel("Try Azure OpenAI")
+            .withHandler((_d, e) -> GuidanceViewManager.getInstance().openCourseView(((AnActionEvent) e).getProject(), "hello-openai"))
+            .withAuthRequired(false)
+            .register(am);
+    }
+
     private void openAccountInAIPlayground(@Nonnull final CognitiveAccount account, @Nonnull final AnActionEvent event) {
         final boolean isGPTDeploymentExists = account.deployments().list().stream()
                 .anyMatch(deployment -> Optional.ofNullable(deployment.getModel()).map(DeploymentModel::isGPTModel).orElse(false));

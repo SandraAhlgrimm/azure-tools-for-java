@@ -29,7 +29,7 @@ public class DeviceLoginWindow extends AzureDialogWrapper {
     private Runnable onCancel;
 
     public DeviceLoginWindow(Project project) {
-        super(project, false, IdeModalityType.PROJECT);
+        super(project, false, IdeModalityType.IDE);
         super.setOKButtonText("Copy&&Open");
         setModal(true);
         setTitle(TITLE);

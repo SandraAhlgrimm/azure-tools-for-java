@@ -24,6 +24,7 @@ import com.microsoft.azure.toolkit.lib.common.event.AzureEventBus;
 import com.microsoft.azure.toolkit.lib.common.messager.AzureMessager;
 import com.microsoft.azure.toolkit.lib.common.model.*;
 import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
+import com.microsoft.azure.toolkit.lib.common.utils.StreamingLogSupport;
 import com.microsoft.azure.toolkit.lib.common.view.IView;
 import com.microsoft.azure.toolkit.lib.servicelinker.ServiceLinker;
 import com.microsoft.azure.toolkit.lib.servicelinker.ServiceLinkerModule;
@@ -86,6 +87,7 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
 
     public static final String SERVICE_LINKER_ACTIONS = "actions.resource.service_linker";
     public static final String SERVICE_LINKER_MODULE_ACTIONS = "actions.resource.service_linker_module";
+    public static final String CONNECTION_STRING_RESOURCE_ACTIONS = "actions.connection_string_resource";
     public static final String RESOURCE_GROUP_CREATE_ACTIONS = "actions.resource.create.group";
 
     @Override
@@ -159,7 +161,7 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
             .withIdParam(AzResource::getName)
             .withShortcut("control alt O")
             .visibleWhen(s -> s instanceof AzResource)
-            .withHandler(s -> am.getAction(OPEN_URL).handle(s.getPortalUrl()))
+            .withHandler((s, e) -> am.getAction(OPEN_URL).handle(s.getPortalUrl(), e))
             .register(am);
 
         new Action<>(OPEN_URL)
@@ -243,10 +245,10 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
             .withLabel("Create In Azure Portal")
             .withIcon(AzureIcons.Action.CREATE.getIconPath())
             .visibleWhen(s -> s instanceof AzService)
-            .withHandler(s -> {
+            .withHandler((s, e) -> {
                 final IAccount account = Azure.az(IAzureAccount.class).account();
                 final String url = String.format("%s/#create/%s", account.getPortalUrl(), s.getName());
-                am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(url);
+                am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(url, e);
             })
             .withShortcut(shortcuts.add())
             .register(am);
@@ -302,7 +304,7 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
             .withLabel(s -> "Create In Azure Portal")
             .withIcon(AzureIcons.Action.CREATE.getIconPath())
             .visibleWhen(s -> s instanceof ServiceLinkerModule)
-            .withHandler((r) -> {
+            .withHandler((r, e) -> {
                 if (r.getParent() instanceof SpringCloudDeployment) {
                     final SpringCloudApp app = ((SpringCloudDeployment) r.getParent()).getParent();
                     final String appUrl = app.getParent().getPortalUrl();
@@ -311,7 +313,7 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
                     return;
                 }
                 final String parentUrl = r.getParent().getPortalUrl();
-                am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(String.format("%s/serviceConnector", parentUrl));
+                am.getAction(ResourceCommonActionsContributor.OPEN_URL).handle(String.format("%s/serviceConnector", parentUrl), e);
             })
             .register(am);
 
@@ -343,7 +345,7 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
             .withIdParam(s -> s.getClass().getSimpleName())
             .withIcon(o -> {
                 final String isActionTriggerVal = AzureStoreManager.getInstance().getIdeStore().getProperty("guidance", "is_action_triggered");
-                boolean isActionTriggered = Optional.ofNullable(isActionTriggerVal).map(Boolean::parseBoolean).orElse(false);
+                final boolean isActionTriggered = Optional.ofNullable(isActionTriggerVal).map(Boolean::parseBoolean).orElse(false);
                 return isActionTriggered ? GET_START.getIconPath() : GET_START_NEW.getIconPath();
             })
             .withAuthRequired(false)
@@ -390,6 +392,12 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
             .withIdParam(AbstractAzResource::getName)
             .withAuthRequired(false)
             .register(am);
+
+        new Action<>(StreamingLogSupport.OPEN_STREAMING_LOG)
+            .withLabel("Open Log Streaming")
+            .withIdParam(StreamingLogSupport::getDisplayName)
+            .withAuthRequired(false)
+            .register(am);
     }
 
     @AzureOperation(name = "boundary/common.copy_string.string", params = {"s"})
@@ -411,6 +419,13 @@ public class ResourceCommonActionsContributor implements IActionsContributor {
             ResourceCommonActionsContributor.REFRESH,
             ResourceCommonActionsContributor.CREATE_SERVICE_LINKER_IN_PORTAL
         ));
+
+        final ActionGroup connectionStringActionGroup = new ActionGroup(
+            ResourceCommonActionsContributor.REFRESH,
+            ResourceCommonActionsContributor.OPEN_AZURE_REFERENCE_BOOK,
+            ResourceCommonActionsContributor.BROWSE_SERVICE_AZURE_SAMPLES
+        );
+        am.registerGroup(CONNECTION_STRING_RESOURCE_ACTIONS, connectionStringActionGroup);
     }
 
     public int getOrder() {

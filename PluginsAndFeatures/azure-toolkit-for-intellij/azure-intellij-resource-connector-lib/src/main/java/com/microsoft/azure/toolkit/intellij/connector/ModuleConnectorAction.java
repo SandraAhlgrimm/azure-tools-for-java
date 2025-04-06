@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.toolkit.intellij.connector;
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.LangDataKeys;
@@ -44,5 +45,10 @@ public class ModuleConnectorAction extends AnAction {
     public void update(@NotNull AnActionEvent e) {
         final boolean onModule = Objects.nonNull(LangDataKeys.MODULE.getData(e.getDataContext()));
         e.getPresentation().setEnabledAndVisible(onModule);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 }

@@ -8,6 +8,7 @@ package com.microsoft.azure.toolkit.intellij.containerregistry.servicesview;
 import com.intellij.docker.registry.DockerRegistryConfigurable;
 import com.intellij.docker.registry.DockerRegistryConfiguration;
 import com.intellij.docker.registry.DockerRegistryManager;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.options.ShowSettingsUtil;
@@ -30,5 +31,10 @@ public class AddContainerRegistryServiceAction extends AnAction {
                 registryManager.addRegistry(registry);
             }
         }
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.BGT;
     }
 }

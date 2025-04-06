@@ -39,10 +39,12 @@ import java.util.*;
 
 import static com.microsoft.azure.toolkit.intellij.common.action.IntellijActionsContributor.ACTIONS_DEPLOY_TO_AZURE;
 import static com.microsoft.azure.toolkit.intellij.connector.ConnectionTopics.CONNECTION_CHANGED;
+import static com.microsoft.azure.toolkit.intellij.connector.DeploymentTargetTopics.TARGET_APP_CHANGED;
 import static com.microsoft.azure.toolkit.intellij.connector.ResourceConnectionActionsContributor.CONNECT_TO_MODULE;
 
 @Slf4j
 public class AzureFacetRootNode extends AbstractProjectNode<AzureModule> implements IAzureFacetNode {
+
     private final AzureEventBus.EventListener eventListener;
 
     public AzureFacetRootNode(final AzureModule module, ViewSettings settings) {
@@ -61,7 +63,7 @@ public class AzureFacetRootNode extends AbstractProjectNode<AzureModule> impleme
                 }
             }
         });
-        connection.subscribe(DeploymentTargetTopics.TARGET_APP_CHANGED, (DeploymentTargetTopics.TargetAppChanged) (m, app, action) -> {
+        connection.subscribe(TARGET_APP_CHANGED, (DeploymentTargetTopics.TargetAppChanged) (m, app, action) -> {
             final JTree tree = this.getTree();
             if (m.getName().equalsIgnoreCase(module.getName()) && tree != null) {
                 updateChildren();

@@ -6,7 +6,6 @@
 package com.microsoft.azure.toolkit.intellij.common.component;
 
 import com.intellij.diagnostic.ThreadDumper;
-import com.intellij.ide.ui.LafManager;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Attachment;
@@ -25,6 +24,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.util.Consumer;
+import com.intellij.util.ui.StartupUiUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -56,7 +56,7 @@ public class UIUtils {
                         (project == null) && !parent.getText().isEmpty() ? LocalFileSystem.getInstance().findFileByPath(parent.getText()) : null);
                 if (files.length > 0) {
                     final StringBuilder builder = new StringBuilder();
-                    for (VirtualFile file : files) {
+                    for (final VirtualFile file : files) {
                         if (builder.length() > 0) {
                             builder.append(File.pathSeparator);
                         }
@@ -96,7 +96,7 @@ public class UIUtils {
                         (project == null) && !parent.getText().isEmpty() ? LocalFileSystem.getInstance().findFileByPath(parent.getText()) : null);
                 if (files.length > 0) {
                     final StringBuilder builder = new StringBuilder();
-                    for (VirtualFile file : files) {
+                    for (final VirtualFile file : files) {
                         if (builder.length() > 0) {
                             builder.append(File.pathSeparator);
                         }
@@ -129,7 +129,7 @@ public class UIUtils {
     public static JComboBox selectByText(JComboBox combo, String name) {
         if (combo.getItemCount() > 0 && name != null && !name.isEmpty()) {
             for (int i = 0; i < combo.getItemCount(); i++) {
-                String itemText = Objects.toString(combo.getItemAt(i));
+                final String itemText = Objects.toString(combo.getItemAt(i));
                 if (name.equals(itemText)) {
                     combo.setSelectedIndex(i);
                     return combo;
@@ -154,7 +154,7 @@ public class UIUtils {
     }
 
     public static void showNotification(@NotNull Project project, String message, MessageType type) {
-        StatusBar statusBar = WindowManager.getInstance().getStatusBar(project);
+        final StatusBar statusBar = WindowManager.getInstance().getStatusBar(project);
         showNotification(statusBar, message, type);
     }
 
@@ -163,13 +163,12 @@ public class UIUtils {
     }
 
     public static boolean isUnderLightTheme() {
-        UIManager.LookAndFeelInfo theme = LafManager.getInstance().getCurrentLookAndFeel();
-        return StringUtils.containsIgnoreCase(theme.getName(), "light");
+        return !StartupUiUtil.INSTANCE.isDarkTheme();
     }
 
     public static void setPanelBackGroundColor(JPanel panel, Color color) {
         panel.setBackground(color);
-        for (Component child : panel.getComponents()) {
+        for (final Component child : panel.getComponents()) {
             if (child instanceof JPanel) {
                 setPanelBackGroundColor((JPanel) child, color);
             }
@@ -181,7 +180,7 @@ public class UIUtils {
     }
 
     public static void assertInPooledThread() {
-        Application app = ApplicationManager.getApplication();
+        final Application app = ApplicationManager.getApplication();
 
         if (!app.isDispatchThread()) {
             return;

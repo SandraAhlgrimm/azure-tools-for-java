@@ -22,6 +22,7 @@
 
 package com.microsoft.azure.hdinsight.spark.console
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.microsoft.azure.hdinsight.common.logger.ILogger
@@ -55,6 +56,10 @@ open class RunSparkConsoleActionDelegate(sparkScalaActionClassName: String) : An
 
     override fun actionPerformed(actionEvent: AnActionEvent) {
         actionPerformedMethod?.invoke(delegate.sparkScalaObj, actionEvent)
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread {
+        return ActionUpdateThread.BGT;
     }
 }
 

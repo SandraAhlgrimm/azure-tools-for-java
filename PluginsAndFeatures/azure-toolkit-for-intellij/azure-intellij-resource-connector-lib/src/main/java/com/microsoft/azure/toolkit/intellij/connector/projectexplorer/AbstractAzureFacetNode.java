@@ -29,6 +29,7 @@ import com.microsoft.azure.toolkit.lib.common.action.AzureActionManager;
 import com.microsoft.azure.toolkit.lib.common.model.AbstractAzResource;
 import com.microsoft.azure.toolkit.lib.common.model.AzComponent;
 import com.microsoft.azure.toolkit.lib.common.model.AzResource;
+import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -52,6 +53,8 @@ import java.util.function.Predicate;
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public abstract class AbstractAzureFacetNode<T> extends AbstractTreeNode<T> implements IAzureFacetNode {
+    public static final Integer DEFAULT_WEIGHT = 30;
+
     private final long createdTime;
     private long disposedTime;
     @Getter
@@ -216,7 +219,7 @@ public abstract class AbstractAzureFacetNode<T> extends AbstractTreeNode<T> impl
         if (Objects.isNull(tree)) {
             return;
         }
-        Optional.ofNullable(ToolWindowManager.getInstance(module.getProject()).getToolWindow("Project")).ifPresent(w -> w.activate(() -> {
+        Optional.ofNullable(ToolWindowManager.getInstance(module.getProject()).getToolWindow("Project")).ifPresent(w -> w.activate(() -> AzureTaskManager.getInstance().runOnPooledThread(() -> {
             final DefaultMutableTreeNode moduleRoot = TreeUtil.findNode((DefaultMutableTreeNode) tree.getModel().getRoot(), node ->
                 node.getUserObject() instanceof PsiDirectoryNode n
                     && Objects.equals(ModuleUtil.findModuleForFile(n.getValue().getVirtualFile(), module.getProject()), module));
@@ -236,7 +239,7 @@ public abstract class AbstractAzureFacetNode<T> extends AbstractTreeNode<T> impl
                     return isContainerNode.test(node);
                 }
             }, from);
-        }, requestFocus));
+        }), requestFocus));
     }
 
     private static boolean isAncestor(Object r, final String target) {

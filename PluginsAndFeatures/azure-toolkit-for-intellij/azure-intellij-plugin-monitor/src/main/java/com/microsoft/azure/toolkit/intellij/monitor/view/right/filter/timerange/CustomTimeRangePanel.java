@@ -1,7 +1,7 @@
 package com.microsoft.azure.toolkit.intellij.monitor.view.right.filter.timerange;
 
 import com.intellij.openapi.vcs.VcsBundle;
-import com.intellij.openapi.vcs.versionBrowser.StandardVersionFilterComponent;
+import com.intellij.openapi.wm.IdeFocusManager;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,10 +20,10 @@ public class CustomTimeRangePanel {
     private JCheckBox myUseDateBeforeFilter;
     private TimePicker myDateAfter;
     private TimePicker myDateBefore;
-    private final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     public CustomTimeRangePanel() {
         $$$setupUI$$$();
+        final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         myDateAfter.setDateFormat(DATE_FORMAT);
         myDateBefore.setDateFormat(DATE_FORMAT);
         final ActionListener listener = this::updateAllEnabled;
@@ -82,8 +82,21 @@ public class CustomTimeRangePanel {
     }
 
     private void updateAllEnabled(@Nullable ActionEvent e) {
-        StandardVersionFilterComponent.updatePair(myUseDateBeforeFilter, myDateBefore, e);
-        StandardVersionFilterComponent.updatePair(myUseDateAfterFilter, myDateAfter, e);
+        updatePair(myUseDateBeforeFilter, myDateBefore, e);
+        updatePair(myUseDateAfterFilter, myDateAfter, e);
+    }
+
+    public static void updatePair(@NotNull JCheckBox checkBox, @NotNull JComponent textField, @Nullable ActionEvent e) {
+        textField.setEnabled(checkBox.isSelected());
+        if (e != null && e.getSource() instanceof JCheckBox && ((JCheckBox)e.getSource()).isSelected()) {
+            final Object source = e.getSource();
+            if (source == checkBox && checkBox.isSelected()) {
+                IdeFocusManager.getGlobalInstance().doWhenFocusSettlesDown(() -> {
+                    IdeFocusManager.getGlobalInstance().requestFocus(textField, true);
+                });
+            }
+        }
+
     }
 
     private void createUIComponents() {

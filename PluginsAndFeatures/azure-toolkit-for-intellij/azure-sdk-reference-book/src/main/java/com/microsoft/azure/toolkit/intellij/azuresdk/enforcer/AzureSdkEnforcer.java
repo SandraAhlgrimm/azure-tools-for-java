@@ -64,7 +64,7 @@ public class AzureSdkEnforcer {
         final Action<?> neverShowAgain = Optional.ofNullable(am).map(m -> m.getAction(ResourceCommonActionsContributor.SUPPRESS_ACTION).bind(actionId)).orElse(null);
         final Action<?>[] actions = Stream.of(referenceBook, neverShowAgain).filter(Objects::nonNull).toArray(Action[]::new);
         final IntellijAzureMessage msg = (IntellijAzureMessage) AzureMessager.getMessager().buildWarningMessage(message, "Deprecated Azure SDK libraries Detected", (Object[]) actions);
-        msg.setProject(project).show();
+        msg.setProject(project).setPriority(IntellijAzureMessage.PRIORITY_HIGH).show();
     }
 
     private static String buildMessage(@Nonnull List<? extends AzureJavaSdkEntity> libs) {

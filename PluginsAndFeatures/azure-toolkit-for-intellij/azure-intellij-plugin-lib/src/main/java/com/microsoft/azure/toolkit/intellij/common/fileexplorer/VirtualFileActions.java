@@ -61,7 +61,7 @@ public class VirtualFileActions {
             final File temp = FileUtil.createTempFile("", title, true);
             Files.writeString(temp.toPath(), jsonContent);
             vf = VirtualFileActions.createVirtualFile(title, title, temp, manager);
-            VirtualFile finalVf = vf;
+            final VirtualFile finalVf = vf;
             WriteAction.run(() -> finalVf.setWritable(false)); // make it readonly.
         }
         final FileEditor[] editors = manager.openFile(vf, true, true);
@@ -70,18 +70,23 @@ public class VirtualFileActions {
     @AzureOperation(name = "boundary/common.open_file_in_editor.file", params = {"file.getName()"})
     public static void openFileInEditor(VirtualFile file, final Function<? super String, Boolean> onSave, Runnable onClose, FileEditorManager manager) {
         final Project project = manager.getProject();
-        final FileType type = FileTypeManager.getInstance().getKnownFileTypeOrAssociate(file, project);
-        if (type == null) {
-            return;
-        } else if (type.isBinary()) {
-            AzureMessager.getMessager().alert("Binary file is not supported to open in editor.");
-            return;
-        }
-        final FileEditor[] editors = manager.openFile(file, true, true);
-        if (editors.length == 0) {
-            throw new AzureToolkitRuntimeException(String.format("Failed to open file %s in editor. Try downloading it first and open it manually.", file.getName()));
-        }
-        Arrays.stream(editors).filter(e -> e instanceof TextEditor).forEach(e -> addFileListeners(file, onSave, onClose, manager, (TextEditor) e));
+        final AzureTaskManager taskManager = AzureTaskManager.getInstance();
+        taskManager.runOnPooledThread(() -> {
+            final FileType type = FileTypeManager.getInstance().getKnownFileTypeOrAssociate(file, project);
+            if (type == null) {
+                return;
+            } else if (type.isBinary()) {
+                AzureMessager.getMessager().alert("Binary file is not supported to open in editor.");
+                return;
+            }
+            taskManager.runLater(() -> {
+                final FileEditor[] editors = manager.openFile(file, true, true);
+                if (editors.length == 0) {
+                    throw new AzureToolkitRuntimeException(String.format("Failed to open file %s in editor. Try downloading it first and open it manually.", file.getName()));
+                }
+                Arrays.stream(editors).filter(e -> e instanceof TextEditor).forEach(e -> addFileListeners(file, onSave, onClose, manager, (TextEditor) e));
+            });
+        });
     }
 
     private static void addFileListeners(VirtualFile virtualFile, Function<? super String, Boolean> onSave, Runnable onClose, FileEditorManager manager, TextEditor editor) {
@@ -126,14 +131,14 @@ public class VirtualFileActions {
 
     public static VirtualFile getVirtualFile(String fileId, FileEditorManager manager) {
         return Arrays.stream(manager.getOpenFiles())
-            .filter(f -> StringUtils.equals(f.getUserData(FILE_ID), fileId))
-            .findAny().orElse(null);
+                .filter(f -> StringUtils.equals(f.getUserData(FILE_ID), fileId))
+                .findAny().orElse(null);
     }
 
     public static VirtualFile createVirtualFile(String fileId, String fileName, File file, FileEditorManager manager) {
         return Arrays.stream(manager.getOpenFiles())
-            .filter(f -> StringUtils.equals(f.getUserData(FILE_ID), fileId))
-            .findAny().orElse(createTempVirtualFile(fileId, fileName, file, manager));
+                .filter(f -> StringUtils.equals(f.getUserData(FILE_ID), fileId))
+                .findAny().orElse(createTempVirtualFile(fileId, fileName, file, manager));
     }
 
     @SneakyThrows
@@ -142,7 +147,13 @@ public class VirtualFileActions {
         final VirtualFile virtualFile = new RemoteVirtualFile(origin, fileName);
         virtualFile.setCharset(StandardCharsets.UTF_8);
         virtualFile.putUserData(FILE_ID, fileId);
-        virtualFile.setWritable(true);
+        AzureTaskManager.getInstance().runLater(() -> {
+            try {
+                WriteAction.run(() -> virtualFile.setWritable(true));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         return virtualFile;
     }
 

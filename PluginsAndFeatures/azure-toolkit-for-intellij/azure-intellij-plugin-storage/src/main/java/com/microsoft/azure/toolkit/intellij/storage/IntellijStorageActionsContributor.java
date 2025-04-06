@@ -10,21 +10,16 @@ import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.ide.common.IActionsContributor;
 import com.microsoft.azure.toolkit.ide.common.action.ResourceCommonActionsContributor;
 import com.microsoft.azure.toolkit.ide.storage.StorageActionsContributor;
-import com.microsoft.azure.toolkit.intellij.connector.AzureServiceResource;
-import com.microsoft.azure.toolkit.intellij.connector.ConnectorDialog;
 import com.microsoft.azure.toolkit.intellij.storage.azurite.AzuriteService;
 import com.microsoft.azure.toolkit.intellij.storage.component.StorageCreationDialog;
-import com.microsoft.azure.toolkit.intellij.storage.connection.StorageAccountResourceDefinition;
 import com.microsoft.azure.toolkit.intellij.storage.creation.CreateStorageAccountAction;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.AzureActionManager;
 import com.microsoft.azure.toolkit.lib.common.model.AbstractAzResourceModule;
-import com.microsoft.azure.toolkit.lib.common.model.AzResource;
-import com.microsoft.azure.toolkit.lib.common.operation.OperationBundle;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.lib.resource.ResourceGroup;
 import com.microsoft.azure.toolkit.lib.storage.AzureStorageAccount;
-import com.microsoft.azure.toolkit.lib.storage.StorageAccount;
+import com.microsoft.azure.toolkit.lib.storage.IStorageAccount;
 import com.microsoft.azure.toolkit.lib.storage.blob.BlobContainerModule;
 import com.microsoft.azure.toolkit.lib.storage.model.StorageAccountConfig;
 import com.microsoft.azure.toolkit.lib.storage.queue.QueueModule;
@@ -42,13 +37,6 @@ public class IntellijStorageActionsContributor implements IActionsContributor {
         final BiPredicate<Object, AnActionEvent> condition = (r, e) -> r instanceof AzureStorageAccount;
         final BiConsumer<Object, AnActionEvent> handler = (c, e) -> CreateStorageAccountAction.create(e.getProject(), null);
         am.registerHandler(ResourceCommonActionsContributor.CREATE, condition, handler);
-
-        am.<AzResource, AnActionEvent>registerHandler(ResourceCommonActionsContributor.CONNECT, (r, e) -> r instanceof StorageAccount,
-            (r, e) -> AzureTaskManager.getInstance().runLater(() -> {
-                final ConnectorDialog dialog = new ConnectorDialog(e.getProject());
-                dialog.setResource(new AzureServiceResource<>(((StorageAccount) r), StorageAccountResourceDefinition.INSTANCE));
-                dialog.show();
-            }));
 
         am.registerHandler(ResourceCommonActionsContributor.CREATE, (m, e) -> m instanceof BlobContainerModule, this::createStorage);
         am.registerHandler(ResourceCommonActionsContributor.CREATE, (m, e) -> m instanceof ShareModule, this::createStorage);
@@ -86,7 +74,7 @@ public class IntellijStorageActionsContributor implements IActionsContributor {
     }
 
     private void createStorage(Object m, Object e) {
-        @SuppressWarnings("unchecked") final AbstractAzResourceModule<?, StorageAccount, ?> module = (AbstractAzResourceModule<?, StorageAccount, ?>) m;
+        @SuppressWarnings("unchecked") final AbstractAzResourceModule<?, IStorageAccount, ?> module = (AbstractAzResourceModule<?, IStorageAccount, ?>) m;
         final AnActionEvent event = (AnActionEvent) e;
         AzureTaskManager.getInstance().runLater(() -> {
             final StorageCreationDialog dialog = new StorageCreationDialog(module, event.getProject());
@@ -95,7 +83,7 @@ public class IntellijStorageActionsContributor implements IActionsContributor {
                 .withLabel("Create")
                 .withIdParam(n -> n)
                 .withSource(module)
-                .withAuthRequired(n -> !module.getParent().isEmulatorResource())
+                .withAuthRequired(n -> module.isAuthRequiredForCreating())
                 .withHandler(c -> module.create(c, "").createIfNotExist()));
             dialog.show();
         });

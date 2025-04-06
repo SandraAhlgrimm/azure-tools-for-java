@@ -54,7 +54,7 @@ public class CognitiveServicesStartupListener implements ProjectActivity {
             final IntellijAzureMessage message = (IntellijAzureMessage) (Objects.nonNull(suppress) ?
                 messager.buildInfoMessage(msg, "Azure OpenAI is supported!", tryOpenAI, suppress) :
                 messager.buildInfoMessage(msg, "Azure OpenAI is supported!", tryOpenAI));
-            message.setProject(project).show(messager);
+            message.setProject(project).setPriority(IntellijAzureMessage.PRIORITY_MIDDLE).show(messager);
         }
     }
 
@@ -83,7 +83,7 @@ public class CognitiveServicesStartupListener implements ProjectActivity {
                     final AzureString msg = AzureString.format("GPT* model based deployment (%s) is detected in your Azure OpenAI service (%s). " +
                         "You can try your own \"%s\" in AI playground.", d.getName(), d.getParent().getName(), "Copilot");
                     final IntellijAzureMessage message = (IntellijAzureMessage) messager.buildInfoMessage(msg, "GPT* model is detected!", tryPlayGround, suppress);
-                    message.setProject(project).show(messager);
+                    message.setProject(project).setPriority(IntellijAzureMessage.PRIORITY_MIDDLE).show(messager);
                 }
             }, () -> {
                 if (accounts.size() > 0 && !IntellijAzureActionManager.isSuppressed(CREATE_DEPLOYMENT)) {
@@ -92,7 +92,7 @@ public class CognitiveServicesStartupListener implements ProjectActivity {
                     final AzureString msg = AzureString.format("GPT* model based Azure OpenAI deployment can be used to build your own \"%s\". "
                         + "<a href='https://go.microsoft.com/fwlink/?linkid=2202896&_ijop_=openai.learn_more'>Learn more</a> about Azure OpenAI.", "Copilot");
                     final IntellijAzureMessage message = (IntellijAzureMessage) messager.buildInfoMessage(msg, "Build your own \"Copilot\"!", createDeployment, suppress);
-                    message.setProject(project).show(messager);
+                    message.setProject(project).setPriority(IntellijAzureMessage.PRIORITY_MIDDLE).show(messager);
                 }
             });
         });

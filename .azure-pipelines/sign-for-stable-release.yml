@@ -42,12 +42,30 @@ extends:
             steps:
               - checkout: self
                 fetchTags: false
-              - task: JavaToolInstaller@0
-                displayName: Use Java 17
+              - task: Bash@3
+                displayName: Prepare JDK environment
                 inputs:
-                  versionSpec: "17"
-                  jdkArchitectureOption: x64
-                  jdkSourceOption: PreInstalled
+                  targetType: inline
+                  script: |
+                    # Create a directory for the JDK
+                    mkdir -p $HOME/java
+                    cd $HOME/java
+
+                    # Download Adoptium/Temurin JDK 17.0.7
+                    echo "Downloading Java 17.0.7..."
+                    wget -q https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.7_7.tar.gz
+
+                    # Extract the archive
+                    echo "Extracting Java 17.0.7..."
+                    tar -xzf OpenJDK17U-jdk_x64_linux_hotspot_17.0.7_7.tar.gz
+                    rm OpenJDK17U-jdk_x64_linux_hotspot_17.0.7_7.tar.gz
+
+                    # Set JAVA_HOME and add to PATH
+                    export JAVA_HOME=$HOME/java/jdk-17.0.7+7
+                    export PATH=$JAVA_HOME/bin:$PATH
+
+                    echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME"
+                    echo "##vso[task.setvariable variable=PATH]$PATH"
               - task: Bash@3
                 displayName: Build Utils
                 inputs:

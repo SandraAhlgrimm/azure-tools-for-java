@@ -133,6 +133,14 @@ extends:
                   script: |
                     # Write your commands here
                     (cd ./artifacts/intellij/folder && zip -r ../../azure-toolkit-for-intellij-$(Build.BuildNumber).zip ./azure-toolkit-for-intellij/)
+              - task: Bash@3
+                displayName: Cleanup
+                inputs:
+                  targetType: 'inline'
+                  script: |
+                    ls -al
+                    
+                    rm -rf ./MicroBuild
               - task: CopyFiles@2
                 displayName: "Copy Files to: $(build.artifactstagingdirectory)"
                 inputs:

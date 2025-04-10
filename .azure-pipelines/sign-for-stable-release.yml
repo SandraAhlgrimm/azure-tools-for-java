@@ -80,12 +80,10 @@ extends:
                 inputs:
                   targetType: inline
                   script: |
+                    (cd PluginsAndFeatures/azure-toolkit-for-intellij && ./gradlew clean buildPlugin -s -Papplicationinsights.key=$(INTELLIJ_KEY) -PneedPatchVersion=false -Psources=false -Porg.gradle.configureondemand=false -Porg.gradle.daemon=false -Porg.gradle.unsafe.configuration-cache=false -Porg.gradle.caching=false)
+
                     mkdir -p ./artifacts/intellij/
-
-                    # Download the IntelliJ plugin from storage using SAS token
-                    echo "Downloading IntelliJ plugin from storage..."
-                    curl -L "$(INTELLIJ_PLUGIN_STORAGE_URL)" -o ./artifacts/intellij/azure-toolkit-for-intellij.zip
-
+                    cp ./PluginsAndFeatures/azure-toolkit-for-intellij/build/distributions/*.zip ./artifacts/intellij/azure-toolkit-for-intellij.zip
                     unzip ./artifacts/intellij/azure-toolkit-for-intellij.zip -d ./artifacts/intellij/folder
                     rm  ./artifacts/intellij/azure-toolkit-for-intellij.zip
               - task: UsePythonVersion@0

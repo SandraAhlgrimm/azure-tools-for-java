@@ -5,30 +5,23 @@ package com.microsoft.azure.toolkit.intellij.java.sdk.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.startup.ProjectActivity;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import kotlin.Unit;
-import kotlin.coroutines.Continuation;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.annotation.Nonnull;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+
 @Slf4j
-public class RuleConfigLoader implements ProjectActivity {
+public class RuleConfigLoader {
     private static final String CONFIG_FILE_PATH = "./ruleConfigs.json";
     private static RuleConfigLoader INSTANCE;
     private Map<String, RuleConfig> ruleConfigs;
 
     private RuleConfigLoader() {
         this.ruleConfigs = new HashMap<>();
+        this.initialize();
     }
 
     /**
@@ -36,15 +29,9 @@ public class RuleConfigLoader implements ProjectActivity {
      *
      * @return The singleton instance of RuleConfigLoader.
      */
+    @Nonnull
     public static RuleConfigLoader getInstance() {
-        return INSTANCE;
-    }
-
-    @Nullable
-    @Override
-    public Object execute(@Nonnull Project project, @Nonnull Continuation<? super Unit> continuation) {
-        initialize();
-        return null;
+        return Holder.INSTANCE;
     }
 
     /**
@@ -125,5 +112,9 @@ public class RuleConfigLoader implements ProjectActivity {
             regexPatternsNode.fields().forEachRemaining(entry -> regexPatterns.put(entry.getKey(), entry.getValue().asText()));
         }
         return regexPatterns;
+    }
+
+    private static class Holder {
+        public static final RuleConfigLoader INSTANCE = new RuleConfigLoader();
     }
 }

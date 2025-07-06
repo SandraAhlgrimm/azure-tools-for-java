@@ -42,24 +42,16 @@ extends:
                 downloadType: specific
                 targetPath: '$(Build.SourcesDirectory)'
             steps:
-              - task: AzureCLI@2
-                displayName: 'VSCE Publish'
+              - task: Bash@3
+                displayName: Build Toolkit Libs@$(TOOLKIT_BRANCH)
                 inputs:
-                  azureSubscription: 'VSCode-Ext-Publishing'
-                  scriptType: pscore
-                  scriptLocation: inlineScript
-                  inlineScript: |
-                        $files = Get-ChildItem -Path "$(Build.SourcesDirectory)" -Recurse -Filter "azure-toolkit-for-intellij-*.zip"
-                        
-                        foreach ($file in $files) {
-                          $headers = @{
-                            "Authorization" = "Bearer $(TOKEN)"
-                          }
-                          $form = @{
-                            "pluginId" = "8053"
-                            "file" = Get-Item $file.FullName
-                            "channel" = "stable"
-                          }
-                          
-                          Invoke-RestMethod -Uri "https://plugins.jetbrains.com/plugin/uploadPlugin" -Method Post -Headers $headers -Form $form -Verbose
-                        }
+                  targetType: inline
+                  script: |-
+                    # Write your commands here
+                    files=$(find $(Build.SourcesDirectory) -type f -iname "azure-toolkit-for-intellij-*.zip")
+                    echo "Found files: $files"
+                    for file in $files;
+                    do
+                    echo "Processing file: $file" 
+                    # curl -i --header "Authorization: Bearer $(TOKEN)" -F pluginId=8053 -F file=@$file -F channel=stable https://plugins.jetbrains.com/plugin/uploadPlugin;
+                    done

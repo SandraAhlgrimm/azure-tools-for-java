@@ -28,12 +28,10 @@ import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.favorite.Favorites;
 import com.microsoft.azure.toolkit.ide.common.genericresource.GenericResourceActionsContributor;
 import com.microsoft.azure.toolkit.ide.common.genericresource.GenericResourceNode;
-import com.microsoft.azure.toolkit.ide.common.icon.AzureIcon;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
-import com.microsoft.azure.toolkit.intellij.common.TerminalUtils;
 import com.microsoft.azure.toolkit.intellij.common.component.Tree;
 import com.microsoft.azure.toolkit.intellij.common.component.TreeUtils;
-import com.microsoft.azure.toolkit.intellij.explorer.azd.AzdInitializeFromTemplates;
+import com.microsoft.azure.toolkit.intellij.explorer.azd.AzdNode;
 import com.microsoft.azure.toolkit.lib.Azure;
 import com.microsoft.azure.toolkit.lib.auth.AzureAccount;
 import com.microsoft.azure.toolkit.lib.auth.IAccountActions;
@@ -70,17 +68,19 @@ public class AzureExplorer extends Tree {
     @Getter
     public static final AzureExplorerNodeProviderManager manager = new AzureExplorerNodeProviderManager();
     public static final String AZURE_ICON = AzureIcons.Common.AZURE.getIconPath();
+    private final AzdNode azdNode;
 
     private AzureExplorer(Project project) {
         super();
         this.putClientProperty(PLACE, ResourceCommonActionsContributor.AZURE_EXPLORER);
+        this.azdNode = new AzdNode(project);
         this.root = new Node<>("Azure")
             .withChildrenLoadLazily(false)
             .addChild(buildFavoriteRoot())
             .addChild(buildAppGroupedResourcesRoot())
             .addChild(buildTypeGroupedResourcesRoot())
             .addChildren(buildNonAzServiceNodes())
-            .addChildren(buildAzdGroup(project));
+            .addChild(azdNode);
 
         this.init(this.root);
         this.setRootVisible(false);
@@ -105,52 +105,6 @@ public class AzureExplorer extends Tree {
             appGroupedResourcesRoot.clearChildren();
             typeGroupedResourcesRoot.clearChildren();
         }));
-    }
-
-    private List<Node<?>> buildAzdGroup(Project project) {
-        final Node<String> azd = new Node<>("Azure Developer (AZD)");
-        azd.addChild(getInitializeFromTemplatesNode(project));
-        azd.addChild(getInitializeFromSourceNode(project));
-        azd.addChild(getProvisionResourcesNode(project));
-        azd.addChild(getDeployToAzureNode(project));
-        azd.addChild(getProvisionAndDeployToAzureNode(project));
-        return List.of(azd);
-    }
-
-    @Nonnull
-    private static Node<String> getProvisionAndDeployToAzureNode(Project project) {
-
-        return new Node<>("Provision and Deploy to Azure")
-                .withIcon(AzureIcons.Action.START)
-                .onClicked(e -> TerminalUtils.executeInTerminal(project, "azd up", "azd"));
-    }
-
-    @Nonnull
-    private static Node<String> getDeployToAzureNode(Project project) {
-        return new Node<>("Deploy to Azure")
-                .withIcon(AzureIcons.Action.DEPLOY)
-                .onClicked(e -> TerminalUtils.executeInTerminal(project, "azd deploy", "azd"));
-    }
-
-    @Nonnull
-    private static Node<String> getProvisionResourcesNode(Project project) {
-        return new Node<>("Provision resources")
-                .withIcon(AzureIcons.Action.EXPORT)
-                .onClicked(e -> TerminalUtils.executeInTerminal(project, "azd provision", "azd"));
-    }
-
-    @Nonnull
-    private static Node<String> getInitializeFromSourceNode(Project project) {
-        return new Node<>("Initialize from source")
-                .withIcon(AzureIcons.Action.EDIT)
-                .onClicked(e -> TerminalUtils.executeInTerminal(project, "azd init", "azd"));
-    }
-
-    @Nonnull
-    private static Node<String> getInitializeFromTemplatesNode(Project project) {
-        return new Node<>("Initialize from templates")
-                .withIcon(AzureIcons.Common.CREATE)
-                .onClicked(e -> AzdInitializeFromTemplates.showToolPopup(project));
     }
 
     @Override

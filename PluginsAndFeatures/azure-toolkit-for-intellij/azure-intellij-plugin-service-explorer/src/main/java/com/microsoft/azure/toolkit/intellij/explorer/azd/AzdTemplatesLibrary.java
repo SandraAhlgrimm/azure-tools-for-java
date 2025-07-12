@@ -6,14 +6,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.BrowserUtil;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
-import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.VerticalFlowLayout;
-import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.ui.components.JBCheckBox;
@@ -21,10 +15,7 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.util.ui.JBUI;
 import com.microsoft.azure.toolkit.intellij.common.AzureActionButton;
-import com.microsoft.azure.toolkit.intellij.common.TerminalUtils;
 import org.jdesktop.swingx.HorizontalLayout;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.HyperlinkEvent;
@@ -38,18 +29,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class AzdAvailableTemplatesPopup extends JPanel {
+public class AzdTemplatesLibrary extends JPanel {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setSerializationInclusion(JsonInclude.Include.NON_NULL)
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final Color activeColor = new Color(100, 150, 255);
     private final Color inactiveColor = Color.GRAY;
     private final Project project;
-    private List<AzdTemplate> templates = new ArrayList<>();
-    private List<JBCheckBox> tagButtons = new ArrayList<>();
-    private JBPopup popup;
+    private final List<AzdTemplate> templates;
+    private final List<JBCheckBox> selectedFilters = new ArrayList<>();
 
-    public AzdAvailableTemplatesPopup(Project project) {
+    public AzdTemplatesLibrary(Project project) {
+        super();
         this.project = project;
         setLayout(new BorderLayout());
         setBorder(JBUI.Borders.empty(10));
@@ -79,7 +70,6 @@ public class AzdAvailableTemplatesPopup extends JPanel {
         scrollPane.setBorder(JBUI.Borders.empty());
         add(scrollPane, BorderLayout.CENTER);
 
-
         // Load data
         loadData(tilesPanel, Collections.emptyList());
     }
@@ -87,10 +77,11 @@ public class AzdAvailableTemplatesPopup extends JPanel {
     public static List<AzdTemplate> readFromGitHub(String githubUrl) {
         try {
             // Read JSON from URL directly into the Repository model
-            return OBJECT_MAPPER.readValue(new URL(githubUrl), new TypeReference<List<AzdTemplate>>() {});
+            return OBJECT_MAPPER.readValue(new URL(githubUrl), new TypeReference<List<AzdTemplate>>() {
+            });
         } catch (IOException e) {
             System.err.println("Error reading JSON from GitHub URL: " + e.getMessage());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -98,7 +89,7 @@ public class AzdAvailableTemplatesPopup extends JPanel {
         allTags.forEach(tag -> {
             final JBCheckBox tagCheckbox = new JBCheckBox(tag);
             tagCheckbox.addActionListener(e -> {
-                final List<String> selectedTags = tagButtons.stream()
+                final List<String> selectedTags = selectedFilters.stream()
                         .filter(AbstractButton::isSelected)
                         .map(AbstractButton::getText)
                         .collect(Collectors.toList());
@@ -106,7 +97,7 @@ public class AzdAvailableTemplatesPopup extends JPanel {
                 loadData(tilesPanel, selectedTags);
             });
             filterTagsPanel.add(tagCheckbox);
-            tagButtons.add(tagCheckbox);
+            selectedFilters.add(tagCheckbox);
         });
     }
 
@@ -114,33 +105,17 @@ public class AzdAvailableTemplatesPopup extends JPanel {
      * Load data from command execution and create tiles
      */
     private void loadData(JPanel tilesPanel, List<String> tags) {
-        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Loading Tool Data", false) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                indicator.setText("Executing command to load templates...");
-                final List<AzdTemplate> javaTemplates = templates.stream()
-                        .filter(template -> template.getLanguages() != null && template.getLanguages().contains("java"))
-                        .toList();
+        final List<AzdTemplate> javaTemplates = templates.stream()
+                .filter(template -> template.getLanguages() != null && template.getLanguages().contains("java"))
+                .filter(template -> tags == null || tags.isEmpty() || template.getTags().containsAll(tags))
+                .toList();
 
-                final List<AzdTemplate> tagTemplates = javaTemplates.stream()
-                        .filter(template -> tags == null || tags.isEmpty() || template.getTags().containsAll(tags))
-                        .toList();
-
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    tilesPanel.removeAll();
-
-                    for (final AzdTemplate item : tagTemplates) {
-                        createToolTile(item, tilesPanel);
-                    }
-
-                    tilesPanel.revalidate();
-                    tilesPanel.repaint();
-                });
-            }
-        });
+        for (final AzdTemplate item : javaTemplates) {
+            createTemplateTile(item, tilesPanel);
+        }
     }
 
-    private void createToolTile(AzdTemplate item, JPanel tilesPanel) {
+    private void createTemplateTile(AzdTemplate item, JPanel tilesPanel) {
         // Title at the top
         final JBLabel titleLabel = new JBLabel(item.getTitle());
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, titleLabel.getFont().getSize() + 2));
@@ -179,9 +154,9 @@ public class AzdAvailableTemplatesPopup extends JPanel {
                 return;
             }
             // Show confirmation dialog
-            RunConfirmationDialog dialog = new RunConfirmationDialog(command);
-            dialog.setTitle("Confirm Run");
-            dialog.show();
+            ConfirmAndRunDialog createDialog = new ConfirmAndRunDialog(project, "Create from template", "Create a new project from the selected template?", command);
+            createDialog.setOkButtonText("Create");
+            createDialog.show();
         });
         commandPanel.add(runButton);
 
@@ -190,37 +165,6 @@ public class AzdAvailableTemplatesPopup extends JPanel {
         final JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
         tilesPanel.add(separator);
     }
-
-    /**
-     * Dialog to show confirmation for running a command
-     */
-    private class RunConfirmationDialog extends DialogWrapper {
-        private final String command;
-
-        public RunConfirmationDialog(String command) {
-            super(project, false);
-            this.command = command;
-            setTitle("Confirm Run");
-            init();
-        }
-
-        @Override
-        protected @Nullable JComponent createCenterPanel() {
-            final JPanel panel = new JPanel(new BorderLayout());
-            panel.add(new JLabel("Run command: " + command + "?"), BorderLayout.CENTER);
-            return panel;
-        }
-        @Override
-        protected void doOKAction() {
-            super.doOKAction();
-            TerminalUtils.executeInTerminal(project, command, "azd");
-        }
-    }
-
-    public void setPopup(JBPopup popup) {
-        this.popup = popup;
-    }
-
 
     public static List<String> topKTags(List<AzdTemplate> input, int k) {
         // Count occurrences

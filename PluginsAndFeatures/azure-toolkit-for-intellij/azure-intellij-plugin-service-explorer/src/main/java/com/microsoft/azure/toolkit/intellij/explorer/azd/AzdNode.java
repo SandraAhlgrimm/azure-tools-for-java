@@ -1,6 +1,5 @@
 package com.microsoft.azure.toolkit.intellij.explorer.azd;
 
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -10,13 +9,12 @@ import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.intellij.common.TerminalUtils;
 
-import javax.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class AzdNode extends Node<String> {
+public final class AzdNode extends Node<String> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -34,11 +32,11 @@ public class AzdNode extends Node<String> {
         if (isAzdInstalled()) {
             if (isAzdSignedIn()) {
                 withDescription("Signed In");
-                addChild(getCreateFromTemplatesNode(project));
-                addChild(getInitializeFromSourceNode(project));
-                addChild(getProvisionResourcesNode(project));
-                addChild(getDeployToAzureNode(project));
-                addChild(getProvisionAndDeployToAzureNode(project));
+                addChild(getCreateFromTemplatesNode());
+                addChild(getInitializeFromSourceNode());
+                addChild(getProvisionResourcesNode());
+                addChild(getDeployToAzureNode());
+                addChild(getProvisionAndDeployToAzureNode());
             } else {
                 withDescription("Not Signed In");
                 onClicked(e -> {
@@ -68,31 +66,31 @@ public class AzdNode extends Node<String> {
         }
     }
 
-    private static Node<String> getProvisionAndDeployToAzureNode(Project project) {
+    private Node<String> getProvisionAndDeployToAzureNode() {
         return new Node<>("Provision and Deploy")
                 .withIcon(AzureIcons.Action.START)
                 .onClicked(e -> new ConfirmAndRunDialog(project, "Provision and deploy", "Do you want to provision and deploy to Azure?", "azd up").show());
     }
 
-    private static Node<String> getDeployToAzureNode(Project project) {
+    private Node<String> getDeployToAzureNode() {
         return new Node<>("Deploy to Azure")
                 .withIcon(AzureIcons.Action.DEPLOY)
                 .onClicked(e -> new ConfirmAndRunDialog(project, "Deploy to Azure", "Do you want to start deployment to Azure?", "azd deploy").show());
     }
 
-    private static Node<String> getProvisionResourcesNode(Project project) {
+    private Node<String> getProvisionResourcesNode() {
         return new Node<>("Provision resources")
                 .withIcon(AzureIcons.Action.EXPORT)
                 .onClicked(e -> new ConfirmAndRunDialog(project, "Provision Resources", "Do you want to provision Azure resources?", "azd provision").show());
     }
 
-    private static Node<String> getInitializeFromSourceNode(Project project) {
+    private Node<String> getInitializeFromSourceNode() {
         return new Node<>("Initialize from source")
                 .withIcon(AzureIcons.Action.EDIT)
                 .onClicked(e -> new ConfirmAndRunDialog(project, "Initialize from source", "Do you want to initialize using existing code?", "azd init").show());
     }
 
-    private static Node<String> getCreateFromTemplatesNode(Project project) {
+    private Node<String> getCreateFromTemplatesNode() {
         return new Node<>("Create from templates")
                 .withIcon(AzureIcons.Common.CREATE)
                 .onClicked(e -> new AzdTemplatesDialog(project).show());

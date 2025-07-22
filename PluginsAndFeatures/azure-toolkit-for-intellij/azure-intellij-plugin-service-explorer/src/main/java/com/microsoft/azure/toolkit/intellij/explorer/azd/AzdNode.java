@@ -30,7 +30,9 @@ public final class AzdNode extends Node<String> {
 
     public void addChildren() {
         if (isAzdInstalled()) {
+            AzdUtils.logTelemetryEvent("azd-installed");
             if (isAzdSignedIn()) {
+                AzdUtils.logTelemetryEvent("azd-signed-in");
                 withDescription("Signed In");
                 addChild(getCreateFromTemplatesNode());
                 addChild(getInitializeFromSourceNode());
@@ -38,6 +40,7 @@ public final class AzdNode extends Node<String> {
                 addChild(getDeployToAzureNode());
                 addChild(getProvisionAndDeployToAzureNode());
             } else {
+                AzdUtils.logTelemetryEvent("azd-not-signed-in");
                 withDescription("Not Signed In");
                 onClicked(e -> {
                     final ConfirmAndRunDialog confirmAndRunDialog = new ConfirmAndRunDialog(project, "Sign in", "Do you want to sign in to Azure Developer CLI (azd)?", "azd auth login");
@@ -46,6 +49,7 @@ public final class AzdNode extends Node<String> {
                 });
             }
         } else {
+            AzdUtils.logTelemetryEvent("azd-not-installed");
             withDescription("Install azd");
             onClicked(e -> {
                 final String command;
@@ -93,7 +97,10 @@ public final class AzdNode extends Node<String> {
     private Node<String> getCreateFromTemplatesNode() {
         return new Node<>("Create from templates")
                 .withIcon(AzureIcons.Common.CREATE)
-                .onClicked(e -> new AzdTemplatesDialog(project).show());
+                .onClicked(e -> {
+                    AzdUtils.logTelemetryEvent("azd-show-templates");
+                    new AzdTemplatesDialog(project).show();
+                });
     }
 
     private static boolean isAzdInstalled() {

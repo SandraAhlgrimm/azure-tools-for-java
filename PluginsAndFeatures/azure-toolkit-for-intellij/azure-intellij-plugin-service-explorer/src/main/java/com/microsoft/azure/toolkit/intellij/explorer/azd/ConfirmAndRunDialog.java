@@ -8,22 +8,27 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Locale;
+import java.util.Objects;
 
 public class ConfirmAndRunDialog extends DialogWrapper {
 
     private final Project project;
     private final String label;
     private final String command;
+    private final String eventName;
 
     public ConfirmAndRunDialog(Project project, String title, String label, String command) {
         super(true);
         this.project = project;
-        setTitle(title);
+        setTitle(Objects.requireNonNull(title, "Title must not be null"));
         setOKButtonText("Run");
         this.label = label;
         init();
         setSize(300, 150);
         this.command = command;
+        this.eventName = title.toLowerCase(Locale.ROOT).replace(" ", "-");
+        AzdUtils.logTelemetryEvent("azd-" + eventName);
     }
 
     public void setOkButtonText(String okButtonText) {
@@ -46,7 +51,14 @@ public class ConfirmAndRunDialog extends DialogWrapper {
 
     @Override
     protected void doOKAction() {
+        AzdUtils.logTelemetryEvent("azd-" + eventName + "-ok");
         super.doOKAction();
         TerminalUtils.executeInTerminal(project, command, "azd");
+    }
+
+    @Override
+    public void doCancelAction() {
+        AzdUtils.logTelemetryEvent("azd-" + eventName + "-cancel");
+        super.doCancelAction();
     }
 }

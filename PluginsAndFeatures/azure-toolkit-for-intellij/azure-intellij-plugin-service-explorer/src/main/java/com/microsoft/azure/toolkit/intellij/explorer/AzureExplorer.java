@@ -31,6 +31,7 @@ import com.microsoft.azure.toolkit.ide.common.genericresource.GenericResourceNod
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.intellij.common.component.Tree;
 import com.microsoft.azure.toolkit.intellij.common.component.TreeUtils;
+import com.microsoft.azure.toolkit.intellij.explorer.azd.AzdNode;
 import com.microsoft.azure.toolkit.lib.Azure;
 import com.microsoft.azure.toolkit.lib.auth.AzureAccount;
 import com.microsoft.azure.toolkit.lib.auth.IAccountActions;
@@ -67,16 +68,20 @@ public class AzureExplorer extends Tree {
     @Getter
     public static final AzureExplorerNodeProviderManager manager = new AzureExplorerNodeProviderManager();
     public static final String AZURE_ICON = AzureIcons.Common.AZURE.getIconPath();
+    private final AzdNode azdNode;
 
-    private AzureExplorer() {
+    private AzureExplorer(Project project) {
         super();
         this.putClientProperty(PLACE, ResourceCommonActionsContributor.AZURE_EXPLORER);
+        this.azdNode = new AzdNode(project);
         this.root = new Node<>("Azure")
             .withChildrenLoadLazily(false)
             .addChild(buildFavoriteRoot())
             .addChild(buildAppGroupedResourcesRoot())
             .addChild(buildTypeGroupedResourcesRoot())
-            .addChildren(buildNonAzServiceNodes());
+            .addChildren(buildNonAzServiceNodes())
+            .addChild(azdNode);
+
         this.init(this.root);
         this.setRootVisible(false);
         //noinspection UnstableApiUsage
@@ -172,7 +177,7 @@ public class AzureExplorer extends Tree {
     public static class ToolWindowFactory implements com.intellij.openapi.wm.ToolWindowFactory, DumbAware {
         public void createToolWindowContent(@Nonnull Project project, @Nonnull ToolWindow toolWindow) {
             final SimpleToolWindowPanel windowPanel = new SimpleToolWindowPanel(true, true);
-            final AzureExplorer explorer = new AzureExplorer();
+            final AzureExplorer explorer = new AzureExplorer(project);
             final JBScrollPane scrollPane = new JBScrollPane(explorer);
             explorer.putClientProperty(KEY_SCROLL_PANE, scrollPane);
             windowPanel.setContent(scrollPane);

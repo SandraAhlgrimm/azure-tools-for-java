@@ -3,6 +3,7 @@
 All notable changes to "Azure Toolkit for IntelliJ IDEA" will be documented in this file.
 
 - [Change Log](#change-log)
+  - [3.96.0](#3960)
   - [3.95.0](#3950)
   - [3.94.0](#3940)
   - [3.93.0](#3930)
@@ -116,6 +117,10 @@ All notable changes to "Azure Toolkit for IntelliJ IDEA" will be documented in t
   - [3.0.8](#308)
   - [3.0.7](#307)
   - [3.0.6](#306)
+
+## 3.96.0
+- Integrate azd to Azure Explorer 
+- Fix some known issues.
 
 ## 3.95.0
 - Update function cdn uri

@@ -2,6 +2,7 @@ package com.microsoft.azure.toolkit.intellij.explorer.azd;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.terminal.ui.TerminalWidget;
 import com.microsoft.azure.toolkit.intellij.common.TerminalUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -53,7 +54,8 @@ public class ConfirmAndRunDialog extends DialogWrapper {
     protected void doOKAction() {
         AzdUtils.logTelemetryEvent("azd-" + eventName + "-ok");
         super.doOKAction();
-        TerminalUtils.executeInTerminal(project, command, "azd");
+        final TerminalWidget azdTerminal = TerminalUtils.getOrCreateTerminalWidget(project, null, "azd");
+        TerminalUtils.executeInTerminal(azdTerminal, command);
     }
 
     @Override

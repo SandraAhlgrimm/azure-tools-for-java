@@ -55,13 +55,10 @@ public final class AzdNode extends Node<String> {
                 final String command;
                 if (System.getProperties().getProperty("os.name").toLowerCase().contains("windows")) {
                     command = "winget install microsoft.azd";
-                    TerminalUtils.executeInTerminal(project, "winget install microsoft.azd", "azd");
                 } else if (System.getProperties().getProperty("os.name").toLowerCase().contains("linux")) {
                     command = "curl -fsSL https://aka.ms/install-azd.sh | bash";
-                    TerminalUtils.executeInTerminal(project, "curl -fsSL https://aka.ms/install-azd.sh | bash", "azd");
                 } else {
                     command = "brew tap azure/azd && brew install azd";
-                    TerminalUtils.executeInTerminal(project, "brew tap azure/azd && brew install azd", "azd");
                 }
                 final ConfirmAndRunDialog installDialog = new ConfirmAndRunDialog(project, "Install azd", "Do you want to install Azure Developer CLI (azd)?", command);
                 installDialog.setOkButtonText("Install");

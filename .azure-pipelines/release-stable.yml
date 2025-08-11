@@ -53,5 +53,5 @@ extends:
                     for file in $files;
                     do
                     echo "Processing file: $file" 
-                    # curl -i --header "Authorization: Bearer $(TOKEN)" -F pluginId=8053 -F file=@$file -F channel=stable https://plugins.jetbrains.com/plugin/uploadPlugin;
+                    curl -i --header "Authorization: Bearer $(TOKEN)" -F pluginId=8053 -F file=@$file -F channel=stable https://plugins.jetbrains.com/plugin/uploadPlugin;
                     done

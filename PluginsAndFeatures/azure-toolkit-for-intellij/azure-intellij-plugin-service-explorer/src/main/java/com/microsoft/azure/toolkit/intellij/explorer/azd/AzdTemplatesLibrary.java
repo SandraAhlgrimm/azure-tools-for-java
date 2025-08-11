@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.VerticalFlowLayout;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.ScrollPaneFactory;
@@ -38,10 +39,12 @@ public class AzdTemplatesLibrary extends JPanel {
     private final Project project;
     private final List<AzdTemplate> templates;
     private final List<JBCheckBox> selectedFilters = new ArrayList<>();
+    private final DialogWrapper dialogWrapper;
 
-    public AzdTemplatesLibrary(Project project) {
+    public AzdTemplatesLibrary(Project project, DialogWrapper dialogWrapper) {
         super();
         this.project = project;
+        this.dialogWrapper = dialogWrapper;
         setLayout(new BorderLayout());
         setBorder(JBUI.Borders.empty(10));
         this.templates = readFromGitHub("https://raw.githubusercontent.com/Azure/awesome-azd/refs/heads/main/website/static/templates.json");
@@ -154,9 +157,17 @@ public class AzdTemplatesLibrary extends JPanel {
                 return;
             }
             // Show confirmation dialog
-            ConfirmAndRunDialog createDialog = new ConfirmAndRunDialog(project, "Create from template", "Create a new project from the selected template?", command);
-            createDialog.setOkButtonText("Create");
+            final ConfirmAndRunDialog createDialog = new ConfirmAndRunDialog(project, "Create from template")
+                    .setLabel("Create a new project from the selected template?")
+                    .setEventName("create-from-template")
+                    .setOnOkAction(() -> {
+                        dialogWrapper.close(DialogWrapper.OK_EXIT_CODE);
+                        AzdUtils.executeInTerminal(project, command);
+                    })
+                    .setOkButtonText("Create");
+
             createDialog.show();
+
         });
         commandPanel.add(runButton);
 

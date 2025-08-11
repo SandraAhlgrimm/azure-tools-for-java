@@ -78,6 +78,19 @@ public class TerminalUtils {
             .orElseGet(() -> manager.createShellWidget(workingDirectory, terminalTabTitle, true, true));
     }
 
+    @Nonnull
+    public static TerminalWidget getTerminalWidget(@Nonnull Project project, @Nullable Path workingDir, String terminalTabTitle) {
+        final TerminalToolWindowManager manager = TerminalToolWindowManager.getInstance(project);
+        final String workingDirectory = Optional.ofNullable(workingDir).map(Path::toString).orElse(null);
+        return manager.getTerminalWidgets().stream()
+                .filter(widget -> StringUtils.isBlank(terminalTabTitle) ||
+                        StringUtils.equals(widget.getTerminalTitle().buildTitle(), terminalTabTitle))
+                .findFirst()
+                .orElseGet(() -> manager.createShellWidget(workingDirectory, terminalTabTitle, true, true));
+    }
+
+
+
     public static boolean hasRunningCommands(TerminalWidget widget) throws IllegalStateException {
         final TtyConnector connector = widget.getTtyConnector();
         if (connector == null) {

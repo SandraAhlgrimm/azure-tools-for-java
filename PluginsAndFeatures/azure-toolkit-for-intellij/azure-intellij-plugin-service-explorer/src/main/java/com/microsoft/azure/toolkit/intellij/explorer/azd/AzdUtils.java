@@ -1,5 +1,9 @@
 package com.microsoft.azure.toolkit.intellij.explorer.azd;
 
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
+import com.intellij.terminal.ui.TerminalWidget;
+import com.microsoft.azure.toolkit.intellij.common.TerminalUtils;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemetry;
 
@@ -21,5 +25,14 @@ public final class AzdUtils {
                 AzureTelemeter.SERVICE_NAME, AZURE_DEVELOPER_CLI
         );
         AzureTelemeter.log(AzureTelemetry.Type.INFO, properties);
+    }
+
+    public static void executeInTerminal(Project project, String command) {
+        final TerminalWidget azdTerminal = TerminalUtils.getTerminalWidget(project, null, "azd");
+        if (TerminalUtils.hasRunningCommands(azdTerminal)) {
+            Messages.showErrorDialog(project, "Another command is already running. Please try again later.", "Error");
+        } else {
+            TerminalUtils.executeInTerminal(azdTerminal, command);
+        }
     }
 }

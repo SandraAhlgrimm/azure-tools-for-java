@@ -20,7 +20,7 @@ public class AzdTemplatesDialog extends DialogWrapper {
 
     @Override
     protected @Nullable JComponent createCenterPanel() {
-        return new AzdTemplatesLibrary(project);
+        return new AzdTemplatesLibrary(project, this);
     }
 
     @Override

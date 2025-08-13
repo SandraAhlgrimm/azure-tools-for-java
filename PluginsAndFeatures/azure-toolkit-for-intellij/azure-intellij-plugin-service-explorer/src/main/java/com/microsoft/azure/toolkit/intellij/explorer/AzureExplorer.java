@@ -50,10 +50,13 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.event.MouseEvent;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -104,6 +107,28 @@ public class AzureExplorer extends Tree {
             final TreeNode<?> typeGroupedResourcesRoot = (TreeNode<?>) root.getChildAt(2);
             appGroupedResourcesRoot.clearChildren();
             typeGroupedResourcesRoot.clearChildren();
+        }));
+
+        AzureEventBus.on("azd.installed", new AzureEventBus.EventListener(e -> {
+            final DefaultTreeModel model = (DefaultTreeModel) this.getModel();
+            final TreeNode<?> root = (TreeNode<?>) model.getRoot();
+            if (root != null && root.children() != null) {
+                Iterator<javax.swing.tree.TreeNode> iterator = root.children().asIterator();
+                while (iterator.hasNext()) {
+                    final TreeNode<?> childNode = (TreeNode<?>) iterator.next();
+                    final Node<?> childInnerNode = childNode.getInner();
+                    if (childInnerNode instanceof AzdNode) {
+                        final AzdNode azdNode = (AzdNode) childInnerNode;
+                        childNode.setAllowsChildren(true);
+                        azdNode.clearClickHandlers();
+                        azdNode.withDescription("");
+                        azdNode.showAzdActions();
+                        azdNode.refreshView();
+                        childNode.updateChildren(true);
+                        break;
+                    }
+                }
+            }
         }));
     }
 

@@ -1,23 +1,35 @@
 package com.microsoft.azure.toolkit.intellij.explorer.azd;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.notification.NotificationGroupManager;
+import com.intellij.notification.NotificationType;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
-import com.microsoft.azure.toolkit.intellij.common.TerminalUtils;
+import com.microsoft.azure.toolkit.lib.common.event.AzureEventBus;
+import org.apache.commons.lang3.SystemUtils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.microsoft.azure.toolkit.intellij.explorer.azd.AzdUtils.executeInTerminal;
 
 public final class AzdNode extends Node<String> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    private static final String WIN_REFRESH_PATH_COMMAND = "$env:PATH = [System.Environment]::GetEnvironmentVariable(\"PATH\",\"Machine\") + \";\" + [System.Environment]::GetEnvironmentVariable(\"PATH\",\"User\"); ";
+    private static final String LINUX_REFRESH_PATH_COMMAND = "source ~/.bashrc";
+    private static final String MAC_REFRESH_PATH_COMMAND = "source ~/.zshrc";
+
+    private static final String WIN_AZD_INSTALL_COMMAND = "winget install microsoft.azd";
+    private static final String LINUX_AZD_INSTALL_COMMAND = "curl -fsSL https://aka.ms/install-azd.sh | bash";
+    private static final String MAC_AZD_INSTALL_COMMAND = "brew tap azure/azd && brew install azd";
 
     private final Project project;
 
@@ -25,70 +37,131 @@ public final class AzdNode extends Node<String> {
         super("Azure Developer (Preview)");
         this.project = project;
         withIcon(AzureIcons.Common.SERVICES);
-        addChildren();
+        initializeNode();
     }
 
-    public void addChildren() {
+    public void initializeNode() {
         if (isAzdInstalled()) {
             AzdUtils.logTelemetryEvent("azd-installed");
-            if (isAzdSignedIn()) {
-                AzdUtils.logTelemetryEvent("azd-signed-in");
-                withDescription("Signed In");
-                addChild(getCreateFromTemplatesNode());
-                addChild(getInitializeFromSourceNode());
-                addChild(getProvisionResourcesNode());
-                addChild(getDeployToAzureNode());
-                addChild(getProvisionAndDeployToAzureNode());
-            } else {
-                AzdUtils.logTelemetryEvent("azd-not-signed-in");
-                withDescription("Not Signed In");
-                onClicked(e -> {
-                    final ConfirmAndRunDialog confirmAndRunDialog = new ConfirmAndRunDialog(project, "Sign in", "Do you want to sign in to Azure Developer CLI (azd)?", "azd auth login");
-                    confirmAndRunDialog.setOkButtonText("Sign In");
-                    confirmAndRunDialog.show();
-                });
-            }
+            showAzdActions();
         } else {
-            AzdUtils.logTelemetryEvent("azd-not-installed");
-            withDescription("Install azd");
-            onClicked(e -> {
-                final String command;
-                if (System.getProperties().getProperty("os.name").toLowerCase().contains("windows")) {
-                    command = "winget install microsoft.azd";
-                } else if (System.getProperties().getProperty("os.name").toLowerCase().contains("linux")) {
-                    command = "curl -fsSL https://aka.ms/install-azd.sh | bash";
-                } else {
-                    command = "brew tap azure/azd && brew install azd";
-                }
-                final ConfirmAndRunDialog installDialog = new ConfirmAndRunDialog(project, "Install azd", "Do you want to install Azure Developer CLI (azd)?", command);
-                installDialog.setOkButtonText("Install");
-                installDialog.show();
-            });
+            showNotInstalled();
         }
+    }
+
+    private void showNotInstalled() {
+        AzdUtils.logTelemetryEvent("azd-not-installed");
+        withDescription("Install azd");
+        onClicked(e -> {
+            final String command;
+            if (SystemUtils.IS_OS_WINDOWS) {
+                command = WIN_AZD_INSTALL_COMMAND;
+            } else if (SystemUtils.IS_OS_LINUX) {
+                command = LINUX_AZD_INSTALL_COMMAND;
+            } else {
+                command = MAC_AZD_INSTALL_COMMAND;
+            }
+
+            final ConfirmAndRunDialog installDialog = new ConfirmAndRunDialog(project, "Install azd");
+            installDialog.setLabel("Do you want to install Azure Developer CLI (azd)?");
+            installDialog.setOkButtonText("Install");
+            installDialog.setEventName("install");
+            installDialog.setOnOkAction(() -> {
+                installAzd(command);
+            });
+            installDialog.show();
+        });
+    }
+
+    private void installAzd(String command) {
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Install azd", false) {
+            @Override
+            public void run(com.intellij.openapi.progress.ProgressIndicator indicator) {
+                indicator.setIndeterminate(true);
+                indicator.setText(getTitle() + "...");
+                final int exitCode = runAsBackgroundTask(command);
+                if (exitCode == 0) {
+                    AzureEventBus.emit("azd.installed");
+                    NotificationGroupManager.getInstance()
+                            .getNotificationGroup("Azure Developer")
+                            .createNotification("Installation of azd is successful.", NotificationType.INFORMATION)
+                            .notify(project);
+
+                    if (SystemUtils.IS_OS_WINDOWS) {
+                        executeInTerminal(project, WIN_REFRESH_PATH_COMMAND);
+                    } else if (SystemUtils.IS_OS_LINUX) {
+                        executeInTerminal(project, LINUX_REFRESH_PATH_COMMAND);
+                    } else {
+                        executeInTerminal(project, MAC_REFRESH_PATH_COMMAND);
+                    }
+                    indicator.stop();
+                } else {
+                    indicator.setText("Installation of azd failed.");
+                    NotificationGroupManager.getInstance()
+                            .getNotificationGroup("Azure Developer")
+                            .createNotification("Installation of azd failed.", NotificationType.ERROR)
+                            .notify(project);
+                    indicator.stop();
+                }
+            }
+        });
+    }
+
+    public void showAzdActions() {
+        AzdUtils.logTelemetryEvent("azd-signed-in");
+        addChild(getCreateFromTemplatesNode());
+        addChild(getInitializeFromSourceNode());
+        addChild(getProvisionResourcesNode());
+        addChild(getDeployToAzureNode());
+        addChild(getProvisionAndDeployToAzureNode());
+    }
+
+    @Override
+    public synchronized void refreshView() {
+        super.refreshView();
+        refreshChildrenLater(true);
     }
 
     private Node<String> getProvisionAndDeployToAzureNode() {
         return new Node<>("Provision and Deploy")
                 .withIcon(AzureIcons.Action.START)
-                .onClicked(e -> new ConfirmAndRunDialog(project, "Provision and deploy", "Do you want to provision and deploy to Azure?", "azd up").show());
+                .onClicked(e -> {
+                    new ConfirmAndRunDialog(project, "Provision and deploy")
+                            .setLabel("Do you want to provision and deploy to Azure?")
+                            .setOnOkAction(() -> executeInTerminal(project, "azd up"))
+                            .setEventName("provision-and-deploy")
+                            .show();
+                });
     }
 
     private Node<String> getDeployToAzureNode() {
         return new Node<>("Deploy to Azure")
                 .withIcon(AzureIcons.Action.DEPLOY)
-                .onClicked(e -> new ConfirmAndRunDialog(project, "Deploy to Azure", "Do you want to start deployment to Azure?", "azd deploy").show());
+                .onClicked(e -> new ConfirmAndRunDialog(project, "Deploy to Azure")
+                        .setLabel("Do you want to start deployment to Azure?")
+                        .setOnOkAction(() -> executeInTerminal(project, "azd deploy"))
+                        .setEventName("deploy-to-azure")
+                        .show());
     }
 
     private Node<String> getProvisionResourcesNode() {
         return new Node<>("Provision resources")
                 .withIcon(AzureIcons.Action.EXPORT)
-                .onClicked(e -> new ConfirmAndRunDialog(project, "Provision Resources", "Do you want to provision Azure resources?", "azd provision").show());
+                .onClicked(e -> new ConfirmAndRunDialog(project, "Provision Resources")
+                        .setLabel("Do you want to provision Azure resources?")
+                        .setOnOkAction(() -> executeInTerminal(project, "azd provision"))
+                        .setEventName("provision-resources")
+                        .show());
     }
 
     private Node<String> getInitializeFromSourceNode() {
         return new Node<>("Initialize from source")
                 .withIcon(AzureIcons.Action.EDIT)
-                .onClicked(e -> new ConfirmAndRunDialog(project, "Initialize from source", "Do you want to initialize using existing code?", "azd init").show());
+                .onClicked(e -> new ConfirmAndRunDialog(project, "Initialize from source")
+                        .setLabel("Do you want to initialize using existing code?")
+                        .setOnOkAction(() -> executeInTerminal(project, "azd init"))
+                        .setEventName("initialize-from-source")
+                        .show());
     }
 
     private Node<String> getCreateFromTemplatesNode() {
@@ -100,40 +173,16 @@ public final class AzdNode extends Node<String> {
                 });
     }
 
-    private static boolean isAzdInstalled() {
-        final String azdVersionJson = runCommand("azd version -o json");
-        if (azdVersionJson != null && !azdVersionJson.isEmpty()) {
-            try {
-                final Map<String, String> response = OBJECT_MAPPER.readValue(azdVersionJson, Map.class);
-                if (response.containsKey("azd")) {
-                    return true;
-                }
-            } catch (JsonProcessingException e) {
-            }
-        }
-        return false;
+    public static boolean isAzdInstalled() {
+        return runAsBackgroundTask("azd version -o json") == 0;
     }
 
-    private static boolean isAzdSignedIn() {
-        final String loginStatusJson = runCommand("azd auth login --check-status -o json");
-        if (loginStatusJson != null && !loginStatusJson.isEmpty()) {
-            try {
-                final Map<String, String> response = OBJECT_MAPPER.readValue(loginStatusJson, Map.class);
-                if (response.containsKey("status") && "success".equals(response.get("status"))) {
-                    return true;
-                }
-            } catch (JsonProcessingException e) {
-            }
-        }
-        return false;
-    }
-
-    public static String runCommand(String command) {
+    private static int runAsBackgroundTask(String command) {
         try {
             final ProcessBuilder processBuilder = new ProcessBuilder();
             // Detect OS and set the appropriate command
-            String os = System.getProperty("os.name").toLowerCase();
-            if (os.contains("win")) {
+            final String os = System.getProperty("os.name").toLowerCase();
+            if (SystemUtils.IS_OS_WINDOWS) {
                 processBuilder.command("cmd", "/c", command); // Windows
             } else {
                 processBuilder.command("bash", "-c", command); // Linux/Unix
@@ -145,13 +194,10 @@ public final class AzdNode extends Node<String> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String output = reader.lines().collect(Collectors.joining("\n"));
                 int exitCode = process.waitFor();
-                if (exitCode != 0) {
-                    return null;
-                }
-                return output;
+                return exitCode;
             }
         } catch (Exception e) {
-            return null; // Handle error appropriately
+            return 1; // Handle error appropriately
         }
     }
 }

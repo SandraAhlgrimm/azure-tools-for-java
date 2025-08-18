@@ -1,0 +1,10 @@
+<idea-plugin>
+    <depends>org.jetbrains.idea.maven</depends>
+    <depends>com.intellij.modules.xml</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity
+                implementation="com.microsoft.azure.toolkit.intellij.azuremcp.GithubCopilotMcpInitializer"/>
+    </extensions>
+</idea-plugin>

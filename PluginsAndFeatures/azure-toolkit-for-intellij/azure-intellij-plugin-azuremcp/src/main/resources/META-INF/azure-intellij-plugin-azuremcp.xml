@@ -6,5 +6,6 @@
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity
                 implementation="com.microsoft.azure.toolkit.intellij.azuremcp.GithubCopilotMcpInitializer"/>
+        <registryKey key="azure.mcp.ghcp.autoconfigure.disabled" description="Azure MCP: Disable auto configure GitHub Copilot" restartRequired="true" defaultValue="false"/>
     </extensions>
 </idea-plugin>

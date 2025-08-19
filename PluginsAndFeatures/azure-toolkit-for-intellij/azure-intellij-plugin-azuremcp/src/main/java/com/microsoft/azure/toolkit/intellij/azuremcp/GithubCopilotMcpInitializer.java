@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManagerListener;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.registry.Registry;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemetry;
@@ -48,6 +49,11 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
 
     @Override
     public Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+
+        if (Registry.is("azure.mcp.ghcp.autoconfigure.disabled", false)) {
+            return null;
+        }
+
         logTelemetryEvent("azmcp-copilot-initialization-started");
         log.info("Running GitHub Copilot MCP initializer");
         try {

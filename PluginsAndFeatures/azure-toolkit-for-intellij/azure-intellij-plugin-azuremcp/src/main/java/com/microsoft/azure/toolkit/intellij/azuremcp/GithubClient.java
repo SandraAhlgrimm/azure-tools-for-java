@@ -24,7 +24,7 @@ public class GithubClient implements Closeable {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL)
             .enable(SerializationFeature.INDENT_OUTPUT);
-    private static final String AZURE_MCP_RELEASE_URL = "https://api.github.com/repos/Azure/azure-mcp/releases";
+    private static final String AZURE_MCP_RELEASE_URL = "https://aka.ms/azmcp/releases";
     private static final TypeReference<List<GithubRelease>> GITHUB_RELEASE_LIST_TYPE = new TypeReference<>() {
     };
 

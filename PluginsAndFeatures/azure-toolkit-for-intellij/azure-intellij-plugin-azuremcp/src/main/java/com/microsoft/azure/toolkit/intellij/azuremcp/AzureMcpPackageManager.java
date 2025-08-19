@@ -171,7 +171,6 @@ public class AzureMcpPackageManager {
         if (arch.contains("aarch64") || arch.contains("arm64")) {
             return "arm64";
         }
-
         throw new RuntimeException("Unsupported architecture: " + arch);
     }
 

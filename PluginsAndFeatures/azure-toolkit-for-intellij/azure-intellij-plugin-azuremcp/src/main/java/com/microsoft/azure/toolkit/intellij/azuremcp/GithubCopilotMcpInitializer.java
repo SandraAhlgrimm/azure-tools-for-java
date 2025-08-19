@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManagerListener;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.util.SystemInfo;
+import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemetry;
 import kotlin.Unit;
@@ -38,6 +39,7 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
 
     private static final ComparableVersion LOWEST_SUPPORTED_COPILOT_VERSION = new ComparableVersion("1.5.50");
     private static final String GHCP_MCP_INITIALIZER = "GitHubCopilotMcpInitializer";
+    private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
     private final AzureMcpPackageManager azureMcpPackageManager;
 
     public GithubCopilotMcpInitializer() {
@@ -46,33 +48,38 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
 
     @Override
     public Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+        logTelemetryEvent("azmcp-copilot-initialization-started");
         log.info("Running GitHub Copilot MCP initializer");
         try {
-            if (isGitHubCopilotPluginInstalled()) {
+            if (isCopilotMcpSupported()) {
                 initializeAzureMcpServer();
             }
+            log.info("GitHub Copilot MCP initializer completed.");
         } catch (final Exception ex) {
             log.error("Error initializing Azure MCP Server: " + ex.getMessage(), ex);
-            logErrorTelemetryEvent("azmcp-server-initialization-failed", ex);
+            logErrorTelemetryEvent("azmcp-copilot-initialization-failed", ex);
         }
         return null;
     }
 
-    private boolean isGitHubCopilotPluginInstalled() {
+    private boolean isCopilotMcpSupported() {
         // Get all installed plugins
         final IdeaPluginDescriptor[] installedPlugins = PluginManagerCore.getPlugins();
-        return Arrays.stream(installedPlugins)
+        boolean copilotMcpSupported = Arrays.stream(installedPlugins)
                 .anyMatch(plugin -> {
-                    final boolean copilotPluginInstalled = "com.github.copilot".equals(plugin.getPluginId().getIdString());
-                    log.info("GitHub Copilot plugin installed: " + copilotPluginInstalled);
+                    final boolean copilotPluginInstalled = COPILOT_PLUGIN_ID.equals(plugin.getPluginId().getIdString());
                     return copilotPluginInstalled && isMcpSupported(plugin.getVersion());
                 });
+        log.info("GitHub Copilot MCP supported: " + copilotMcpSupported);
+        logTelemetryEvent("azmcp-copilot-supported-" + (copilotMcpSupported ? "true" : "false"));
+        return copilotMcpSupported;
     }
 
     private void initializeAzureMcpServer() throws Exception {
-        log.info("Getting Azure MCP executable");
+        log.info("Initializing Azure MCP Server");
         final File azMcpExe = azureMcpPackageManager.getAzureMcpExecutable();
         if (azMcpExe != null) {
+            log.info("Azure MCP executable found at: " + azMcpExe.getAbsolutePath());
             configureMcpServer(azMcpExe);
             azureMcpPackageManager.cleanup();
         }
@@ -81,17 +88,18 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
     private void configureMcpServer(File azMcpExe) throws Exception {
         log.info("Initializing Azure MCP Server");
         final String mcpConfigLocation = getConfigPath().getAbsolutePath() + "/mcp.json";
-        final Path mcpPath = Path.of(mcpConfigLocation);
+        final Path mcpConfigPath = Path.of(mcpConfigLocation);
         final McpConfig mcpConfig;
-        if (mcpPath.toFile().exists()) {
+        if (mcpConfigPath.toFile().exists()) {
             log.info("MCP configuration file already exists at: " + mcpConfigLocation);
-            final String mcpContents = new String(Files.readAllBytes(mcpPath));
+            final String mcpContents = new String(Files.readAllBytes(mcpConfigPath));
             mcpConfig = OBJECT_MAPPER.readValue(mcpContents, McpConfig.class);
         } else {
-            Files.createDirectories(mcpPath.getParent());
+            // Generally, GitHub Copilot creates the mcp.json file. However, there is a possiblility that it's deleted.
+            log.info("Creating MCP configuration directory: " + mcpConfigLocation);
+            Files.createDirectories(mcpConfigPath.getParent());
             mcpConfig = new McpConfig();
         }
-
         Map<String, McpServer> servers = mcpConfig.getServers();
         if (servers == null) {
             servers = new HashMap<>();
@@ -102,11 +110,11 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
         azureMcpServer.setCommand(azMcpExe.getAbsolutePath());
         azureMcpServer.setArgs(Arrays.asList("server", "start"));
         servers.put("Azure MCP Server", azureMcpServer);
-        Files.writeString(mcpPath, OBJECT_MAPPER.writeValueAsString(mcpConfig));
-        logTelemetryEvent("azmcp-server-initialization-success");
+        Files.writeString(mcpConfigPath, OBJECT_MAPPER.writeValueAsString(mcpConfig));
+        logTelemetryEvent("azmcp-copilot-initialization-success");
     }
 
-    public boolean isMcpSupported(String version) {
+    private boolean isMcpSupported(String version) {
         log.info("GitHub Copilot plugin version is: " + version);
         if (version == null) {
             return false;
@@ -150,7 +158,9 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
                 AzureTelemeter.OPERATION_NAME, eventName, // what's the difference between OP_NAME and OPERATION_NAME?
                 AzureTelemeter.SERVICE_NAME, GHCP_MCP_INITIALIZER
         );
-        AzureTelemeter.log(AzureTelemetry.Type.INFO, properties);
+        AzureTaskManager.getInstance().runLater(() -> {
+            AzureTelemeter.log(AzureTelemetry.Type.INFO, properties);
+        });
     }
 
     public static void logErrorTelemetryEvent(String eventName, Exception ex) {
@@ -161,6 +171,8 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
                 AzureTelemeter.SERVICE_NAME, GHCP_MCP_INITIALIZER,
                 AzureTelemeter.ERROR_STACKTRACE, ExceptionUtils.getStackTrace(ex)
         );
-        AzureTelemeter.log(AzureTelemetry.Type.ERROR, properties);
+        AzureTaskManager.getInstance().runLater(() -> {
+            AzureTelemeter.log(AzureTelemetry.Type.ERROR, properties);
+        });
     }
 }

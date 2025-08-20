@@ -198,8 +198,10 @@ public final class AzdNode extends Node<String> {
             final String os = System.getProperty("os.name").toLowerCase();
             if (SystemUtils.IS_OS_WINDOWS) {
                 processBuilder.command("cmd", "/c", command); // Windows
+            } else if (SystemUtils.IS_OS_MAC) {
+                processBuilder.command("zsh", "-c", command); // Mac
             } else {
-                processBuilder.command("bash", "-c", command); // Linux/Unix
+                processBuilder.command("bash", "-c", command); // Linux
             }
 
             Process process = processBuilder.start();

@@ -36,7 +36,7 @@ public final class AzdNode extends Node<String> {
 
     private static final String WIN_AZD_INSTALL_COMMAND = "winget install microsoft.azd";
     private static final String LINUX_AZD_INSTALL_COMMAND = "set -o pipefail && curl -fsSL https://aka.ms/install-azd.sh | bash";
-    private static final String MAC_AZD_INSTALL_COMMAND = "brew tap azure/azd && brew install azd";
+    private static final String MAC_AZD_INSTALL_COMMAND = "source ~/.zshrc && brew tap azure/azd && brew install azd";
 
     private final Project project;
 

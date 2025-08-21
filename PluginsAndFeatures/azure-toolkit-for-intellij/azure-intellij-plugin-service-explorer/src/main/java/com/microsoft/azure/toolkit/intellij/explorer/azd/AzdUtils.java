@@ -9,6 +9,7 @@ import com.microsoft.azure.toolkit.lib.common.task.AzureTask;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemeter;
 import com.microsoft.azure.toolkit.lib.common.telemetry.AzureTelemetry;
+import org.apache.commons.lang3.SystemUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -39,6 +40,9 @@ public final class AzdUtils {
     }
 
     public static void executeInTerminal(Project project, String command) {
+        if (SystemUtils.IS_OS_WINDOWS) {
+            command = command + " \r\n";
+        }
         executeInExistingTerminal(project, command, null, "azd");
     }
 

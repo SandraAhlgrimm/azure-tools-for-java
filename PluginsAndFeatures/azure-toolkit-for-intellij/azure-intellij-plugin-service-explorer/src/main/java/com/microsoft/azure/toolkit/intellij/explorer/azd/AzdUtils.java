@@ -14,7 +14,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 import static com.microsoft.azure.toolkit.intellij.common.TerminalUtils.getTerminalWidget;
 

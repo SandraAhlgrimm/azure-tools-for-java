@@ -2,9 +2,11 @@ package com.microsoft.azure.toolkit.intellij.azuremcp;
 
 import com.intellij.openapi.application.PathManager;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -59,7 +61,7 @@ public class AzureMcpPackageManager {
                             final File azMcpTgz = new File(azMcpDir, "azmcp_" + tagName + ".tgz");
                             log.info("Downloading Azure MCP Server to: " + azMcpTgz.getAbsolutePath());
                             final boolean downloaded = gitHubClient.downloadToFile(asset.getBrowserDownloadUrl(), azMcpTgz);
-                            if (downloaded) {
+                            if (downloaded && digestMatches(azMcpTgz, asset.getDigest())) {
                                 log.info("Downloaded Azure MCP Server successfully in " + (System.currentTimeMillis() - startTime) + " ms");
                                 log.info("Extracting Azure MCP Server to: " + extractedDir.getAbsolutePath());
                                 extractTarGz(azMcpTgz, extractedDir);
@@ -78,6 +80,18 @@ public class AzureMcpPackageManager {
             System.err.println("Error reading Azure MCP Server version: " + e.getMessage());
         }
         return null;
+    }
+
+    private boolean digestMatches(File azMcpTgz, String expectedDigest) {
+        try {
+            // GitHub releases API computes the SHA-256 digest of the file contents.
+            // https://github.blog/changelog/2025-06-03-releases-now-expose-digests-for-release-assets/
+            final String downloadFileDigest = DigestUtils.sha256Hex(new FileInputStream(azMcpTgz));
+            return StringUtils.equalsIgnoreCase("sha256:" + downloadFileDigest, expectedDigest);
+        } catch (final Exception e) {
+            log.error("Failed to calculate file digest", e);
+            return false;
+        }
     }
 
     public synchronized void cleanup() {

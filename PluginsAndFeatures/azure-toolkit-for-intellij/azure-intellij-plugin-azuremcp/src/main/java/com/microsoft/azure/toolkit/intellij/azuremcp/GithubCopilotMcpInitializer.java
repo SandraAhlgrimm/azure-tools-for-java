@@ -113,7 +113,10 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
         final McpServer azureMcpServer = new McpServer();
         azureMcpServer.setCommand(azMcpExe.getAbsolutePath());
         azureMcpServer.setArgs(Arrays.asList("server", "start"));
-        servers.put("Azure MCP Server", azureMcpServer);
+        if (servers.containsKey("Azure MCP Server")) {
+            servers.remove("Azure MCP Server");
+        }
+        servers.put("Azure MCP Server IntelliJ", azureMcpServer);
         Files.writeString(mcpConfigPath, OBJECT_MAPPER.writeValueAsString(mcpConfig));
         logTelemetryEvent("azmcp-copilot-initialization-success");
     }

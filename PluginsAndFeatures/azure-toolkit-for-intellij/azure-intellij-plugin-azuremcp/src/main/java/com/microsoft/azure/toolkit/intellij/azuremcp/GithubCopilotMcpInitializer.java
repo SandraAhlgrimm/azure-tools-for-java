@@ -55,9 +55,9 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
         logTelemetryEvent("azmcp-copilot-initialization-started");
         log.info("Running GitHub Copilot MCP initializer");
         try {
-//            if (isCopilotMcpSupported()) {
+            if (isCopilotMcpSupported()) {
                 initializeAzureMcpServer();
-//            }
+            }
             log.info("GitHub Copilot MCP initializer completed.");
         } catch (final Exception ex) {
             log.error("Error initializing Azure MCP Server: " + ex.getMessage(), ex);

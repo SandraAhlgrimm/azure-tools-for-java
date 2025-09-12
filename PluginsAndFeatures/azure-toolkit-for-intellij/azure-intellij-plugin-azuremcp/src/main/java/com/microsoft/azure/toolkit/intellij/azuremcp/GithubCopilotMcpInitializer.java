@@ -55,9 +55,9 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
         logTelemetryEvent("azmcp-copilot-initialization-started");
         log.info("Running GitHub Copilot MCP initializer");
         try {
-            if (isCopilotMcpSupported()) {
+//            if (isCopilotMcpSupported()) {
                 initializeAzureMcpServer();
-            }
+//            }
             log.info("GitHub Copilot MCP initializer completed.");
         } catch (final Exception ex) {
             log.error("Error initializing Azure MCP Server: " + ex.getMessage(), ex);
@@ -93,16 +93,17 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
         log.info("Initializing Azure MCP Server");
         final String mcpConfigLocation = getConfigPath().getAbsolutePath() + "/mcp.json";
         final Path mcpConfigPath = Path.of(mcpConfigLocation);
-        final McpConfig mcpConfig;
+        McpConfig mcpConfig = new McpConfig();
         if (mcpConfigPath.toFile().exists()) {
             log.info("MCP configuration file already exists at: " + mcpConfigLocation);
             final String mcpContents = new String(Files.readAllBytes(mcpConfigPath));
-            mcpConfig = OBJECT_MAPPER.readValue(mcpContents, McpConfig.class);
+            if (!mcpContents.isEmpty()) {
+                mcpConfig = OBJECT_MAPPER.readValue(mcpContents, McpConfig.class);
+            }
         } else {
             // Generally, GitHub Copilot creates the mcp.json file. However, there is a possiblility that it's deleted.
             log.info("Creating MCP configuration directory: " + mcpConfigLocation);
             Files.createDirectories(mcpConfigPath.getParent());
-            mcpConfig = new McpConfig();
         }
         Map<String, McpServer> servers = mcpConfig.getServers();
         if (servers == null) {

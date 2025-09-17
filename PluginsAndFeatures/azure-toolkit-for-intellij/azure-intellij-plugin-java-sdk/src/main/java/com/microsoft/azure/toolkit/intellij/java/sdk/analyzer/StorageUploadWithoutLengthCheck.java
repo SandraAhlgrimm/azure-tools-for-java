@@ -20,6 +20,7 @@ import com.intellij.psi.PsiVariable;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +33,9 @@ public class StorageUploadWithoutLengthCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new StorageUploadVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
+        final RuleConfigLoader loader = RuleConfigLoader.getInstance();
+        final Map<String, RuleConfig> rules = (loader != null) ? loader.getRuleConfigs() : Collections.emptyMap();
+        return new StorageUploadVisitor(holder, rules);
     }
 
     /**

@@ -23,6 +23,8 @@ import com.intellij.psi.PsiVariable;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
+
+import java.util.Collections;
 import java.util.Map;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
@@ -38,7 +40,9 @@ public class HardcodedAPIKeysAndTokensCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        return new APIKeysAndTokensVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
+        final RuleConfigLoader loader = RuleConfigLoader.getInstance();
+        final Map<String, RuleConfig> rules = (loader != null) ? loader.getRuleConfigs() : Collections.emptyMap();
+        return new APIKeysAndTokensVisitor(holder, rules);
     }
 
     /**

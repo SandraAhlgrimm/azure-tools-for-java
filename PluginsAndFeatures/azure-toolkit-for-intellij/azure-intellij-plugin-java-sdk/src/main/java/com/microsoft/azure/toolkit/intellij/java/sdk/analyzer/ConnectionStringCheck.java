@@ -13,8 +13,6 @@ import com.intellij.psi.PsiMethodCallExpression;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
-
-import java.util.Collections;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,9 +23,7 @@ public class ConnectionStringCheck extends LocalInspectionTool {
 
     @Override
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        final RuleConfigLoader loader = RuleConfigLoader.getInstance();
-        final Map<String, RuleConfig> rules = (loader != null) ? loader.getRuleConfigs() : Collections.emptyMap();
-        return new ConnectionStringCheckVisitor(holder, rules);
+        return new ConnectionStringCheckVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
 
     static class ConnectionStringCheckVisitor extends JavaElementVisitor {

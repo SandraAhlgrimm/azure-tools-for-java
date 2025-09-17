@@ -17,8 +17,6 @@ import com.intellij.psi.PsiVariable;
 import com.microsoft.azure.toolkit.intellij.java.sdk.models.RuleConfig;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.HelperUtils;
 import com.microsoft.azure.toolkit.intellij.java.sdk.utils.RuleConfigLoader;
-
-import java.util.Collections;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,11 +37,9 @@ public class DisableAutoCompleteCheck extends LocalInspectionTool {
     @NotNull
     @Override
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
-        final RuleConfigLoader loader = RuleConfigLoader.getInstance();
-        final Map<String, RuleConfig> rules = (loader != null) ? loader.getRuleConfigs() : Collections.emptyMap();
-        return new DisableAutoCompleteVisitor(holder, rules);
+        return new DisableAutoCompleteVisitor(holder, RuleConfigLoader.getInstance().getRuleConfigs());
     }
-
+    
     /**
      * This class extends the JavaElementVisitor and is used to visit the Java elements in the code. It checks for the
      * usage of Azure SDK ServiceBusReceiver & ServiceBusProcessor clients and whether the auto-complete feature is

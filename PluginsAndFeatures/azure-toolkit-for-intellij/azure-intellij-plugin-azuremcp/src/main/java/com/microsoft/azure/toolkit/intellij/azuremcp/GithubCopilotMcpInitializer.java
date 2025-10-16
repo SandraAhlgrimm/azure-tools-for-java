@@ -39,6 +39,8 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
 
     private static final ComparableVersion LOWEST_SUPPORTED_COPILOT_VERSION = new ComparableVersion("1.5.50");
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
+    private static final String AZURE_MCP_SERVER_NAME = "Azure MCP Server IntelliJ";
+    private static final String LEGACY_SERVER_NAME = "Azure MCP Server";
     private final AzureMcpPackageManager azureMcpPackageManager;
 
     public GithubCopilotMcpInitializer() {
@@ -49,6 +51,7 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
     public Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
 
         if (Registry.is("azure.mcp.ghcp.autoconfigure.disabled", false)) {
+            logTelemetryEvent("azmcp-copilot-initialization-disabled");
             return null;
         }
 
@@ -114,11 +117,15 @@ public class GithubCopilotMcpInitializer implements ProjectActivity, DumbAware, 
         final McpServer azureMcpServer = new McpServer();
         azureMcpServer.setCommand(azMcpExe.getAbsolutePath());
         azureMcpServer.setArgs(Arrays.asList("server", "start"));
-        if (servers.containsKey("Azure MCP Server")) {
-            servers.remove("Azure MCP Server");
+        servers.remove(LEGACY_SERVER_NAME); // legacy name - remove if it exists
+
+        if (servers.containsKey(AZURE_MCP_SERVER_NAME)) {
+            final McpServer existingConfig = servers.get(AZURE_MCP_SERVER_NAME);
+            if (!azureMcpServer.getCommand().equals(existingConfig.getCommand())) {
+                servers.put(AZURE_MCP_SERVER_NAME, azureMcpServer);
+                Files.writeString(mcpConfigPath, OBJECT_MAPPER.writeValueAsString(mcpConfig));
+            }
         }
-        servers.put("Azure MCP Server IntelliJ", azureMcpServer);
-        Files.writeString(mcpConfigPath, OBJECT_MAPPER.writeValueAsString(mcpConfig));
         logTelemetryEvent("azmcp-copilot-initialization-success");
     }
 

@@ -29,6 +29,7 @@ public class GithubClient implements Closeable {
     private static final String AZURE_MCP_RELEASE_URL = "https://api.github.com/repos/microsoft/mcp/releases";
     private static final TypeReference<List<GithubRelease>> GITHUB_RELEASE_LIST_TYPE = new TypeReference<>() {
     };
+    private static final String AZURE_MCP_SERVER = "Azure.Mcp.Server";
 
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
 
@@ -36,7 +37,10 @@ public class GithubClient implements Closeable {
         final HttpUriRequest request = RequestBuilder.get().setUri(AZURE_MCP_RELEASE_URL).build();
         try (final CloseableHttpResponse response = httpClient.execute(request)) {
             final List<GithubRelease> releases = OBJECT_MAPPER.readValue(response.getEntity().getContent(), GITHUB_RELEASE_LIST_TYPE);
-            return releases.stream().findFirst().orElse(null);
+            return releases.stream()
+                    .filter(release -> release.getName() != null && release.getName().startsWith(AZURE_MCP_SERVER))
+                    .findFirst()
+                    .orElse(null);
         } catch (final IOException exception) {
             log.error("Error getting latest Azure MCP release details: " + exception.getMessage());
             AzureMcpUtils.logErrorTelemetryEvent("azmcp-get-latest-release-failed", exception);

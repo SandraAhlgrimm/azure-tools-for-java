@@ -3,9 +3,6 @@ package com.microsoft.azure.toolkit.intellij.azuremcp;
 import com.intellij.openapi.application.PathManager;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.NotNull;
@@ -40,7 +37,7 @@ public class AzureMcpPackageManager {
 
                 final Optional<GithubAsset> githubAsset = latestRelease.getAssets()
                         .stream()
-                        .filter(asset -> asset.getName().startsWith("azure-mcp-" + platform))
+                        .filter(asset -> asset.getName().startsWith("Azure.Mcp.Server-" + platform))
                         .findFirst();
 
                 if (githubAsset.isPresent()) {
@@ -58,13 +55,13 @@ public class AzureMcpPackageManager {
                         final File azMcpExe = new File(executablePath);
                         if (!azMcpExe.exists()) {
                             Files.writeString(versionFile, tagName, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-                            final File azMcpTgz = new File(azMcpDir, "azmcp_" + tagName + ".tgz");
-                            log.info("Downloading Azure MCP Server to: " + azMcpTgz.getAbsolutePath());
-                            final boolean downloaded = gitHubClient.downloadToFile(asset.getBrowserDownloadUrl(), azMcpTgz);
-                            if (downloaded && digestMatches(azMcpTgz, asset.getDigest())) {
+                            final File azMcpZip = new File(azMcpDir, "azmcp_" + tagName + ".zip");
+                            log.info("Downloading Azure MCP Server to: " + azMcpZip.getAbsolutePath());
+                            final boolean downloaded = gitHubClient.downloadToFile(asset.getBrowserDownloadUrl(), azMcpZip);
+                            if (downloaded && digestMatches(azMcpZip, asset.getDigest())) {
                                 log.info("Downloaded Azure MCP Server successfully in " + (System.currentTimeMillis() - startTime) + " ms");
                                 log.info("Extracting Azure MCP Server to: " + extractedDir.getAbsolutePath());
-                                extractTarGz(azMcpTgz, extractedDir);
+                                extractZip(azMcpZip, extractedDir);
                                 log.info("Azure MCP Server extracted successfully to: " + extractedDir.getAbsolutePath());
                             }
                         }
@@ -83,11 +80,11 @@ public class AzureMcpPackageManager {
         return null;
     }
 
-    private boolean digestMatches(File azMcpTgz, String expectedDigest) {
+    private boolean digestMatches(File azMcpZip, String expectedDigest) {
         try {
             // GitHub releases API computes the SHA-256 digest of the file contents.
             // https://github.blog/changelog/2025-06-03-releases-now-expose-digests-for-release-assets/
-            final String downloadFileDigest = DigestUtils.sha256Hex(new FileInputStream(azMcpTgz));
+            final String downloadFileDigest = DigestUtils.sha256Hex(new FileInputStream(azMcpZip));
             return StringUtils.equalsIgnoreCase("sha256:" + downloadFileDigest, expectedDigest);
         } catch (final Exception e) {
             log.error("Failed to calculate file digest", e);
@@ -134,28 +131,28 @@ public class AzureMcpPackageManager {
     }
 
     private @NotNull String getExecutableRelativePath() {
-        String executablePath = "/package/dist/azmcp";
+        String executablePath = "/azmcp";
         if (SystemUtils.IS_OS_WINDOWS) {
             executablePath += ".exe";
         }
         return executablePath;
     }
 
-    private void extractTarGz(File tarGzFile, File destDir) throws IOException {
-        try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(
-                new GzipCompressorInputStream(
-                        new FileInputStream(tarGzFile)))) {
-            TarArchiveEntry entry;
-            while ((entry = tarIn.getNextTarEntry()) != null) {
-                final File outputFile = new File(destDir, entry.getName());
-                if (entry.isDirectory()) {
-                    if (!outputFile.exists()) {
-                        outputFile.mkdirs();
-                    }
+    private void extractZip(File zipFile, File destDir) throws IOException {
+        try (final java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new FileInputStream(zipFile))) {
+            java.util.zip.ZipEntry zipEntry;
+            while ((zipEntry = zis.getNextEntry()) != null) {
+                final File outputFile = new File(destDir, zipEntry.getName());
+                if (zipEntry.isDirectory()) {
+                    if (!outputFile.exists()) outputFile.mkdirs();
                 } else {
-                    outputFile.getParentFile().mkdirs();
+                    if (!outputFile.getParentFile().exists()) outputFile.getParentFile().mkdirs();
                     try (final FileOutputStream fos = new FileOutputStream(outputFile)) {
-                        tarIn.transferTo(fos);
+                        final byte[] buffer = new byte[4096];
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
                     }
                 }
             }
@@ -164,13 +161,13 @@ public class AzureMcpPackageManager {
 
     private static String getPlatformIdentifier() {
         // Operating System detection
-        String os = null;
+        final String os;
         if (SystemUtils.IS_OS_WINDOWS) {
-            os = "win32";
+            os = "win";
         } else if (SystemUtils.IS_OS_LINUX) {
             os = "linux";
         } else if (SystemUtils.IS_OS_MAC) {
-            os = "darwin";
+            os = "osx";
         } else {
             throw new RuntimeException("Unsupported OS " + SystemUtils.OS_NAME);
         }

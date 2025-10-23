@@ -21,3 +21,9 @@ dependencies {
         bundledPlugin("org.jetbrains.plugins.terminal")
     }
 }
+
+tasks {
+    instrumentCode {
+        instrumentationLogs = true
+    }
+}

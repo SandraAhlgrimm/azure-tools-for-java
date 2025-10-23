@@ -20,8 +20,12 @@ dependencies {
         exclude(group="pull-parser", module="pull-parser")
         exclude(group="net.java.dev.msv", module="xsdlib")
     }
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2") {
+        exclude(group = "com.fasterxml.jackson", module = "jackson-bom")
+    }
     intellijPlatform {
         // Plugin Dependencies. Uses `platformBundledPlugins` property from the gradle.properties file for bundled IntelliJ Platform plugins.
         bundledPlugin("org.jetbrains.plugins.terminal")
     }
 }
+

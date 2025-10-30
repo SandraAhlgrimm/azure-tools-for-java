@@ -135,6 +135,7 @@ public class AppServiceInfoBasicPanel<T extends AppServiceConfig> extends JPanel
     private void createUIComponents() {
         // TODO: place custom component creation code here
         this.selectorApplication = new AzureArtifactComboBox(project, true);
+        this.selectorRuntime = new RuntimeComboBox();
     }
 
     public void setDeploymentVisible(boolean visible) {

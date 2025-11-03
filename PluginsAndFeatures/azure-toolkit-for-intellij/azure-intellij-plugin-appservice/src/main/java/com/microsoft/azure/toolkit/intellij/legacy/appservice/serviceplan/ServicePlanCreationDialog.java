@@ -107,6 +107,7 @@ public class ServicePlanCreationDialog extends AzureDialog<AppServicePlanDraft>
     private void createUIComponents() {
         // TODO: place custom component creation code here
         this.textName = new AzureTextInput();
+        this.textName.setRequired(true);
         this.comboBoxPricingTier = new PricingTierComboBox();
     }
 }

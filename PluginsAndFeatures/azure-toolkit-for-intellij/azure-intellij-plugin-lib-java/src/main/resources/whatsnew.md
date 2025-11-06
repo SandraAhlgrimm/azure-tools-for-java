@@ -1,6 +1,10 @@
 <!-- Version: 3.88.0 -->
 # What's new in Azure Toolkit for IntelliJ
 
+## 3.96.3
+- Support IntelliJ 2025.3 EAP
+- Update the Azure MCP server name from releases list
+
 ## 3.96.2
 - Configure GitHub Copilot with trimmed Azure MCP server for faster startup and a smaller footprint.
 

@@ -28,9 +28,10 @@
   <change-notes>
     <![CDATA[
     <html>
-      <h2 id="3-96-2">3.96.3</h2>
+      <h2 id="3-96-3">3.96.3</h2>
       <ul>
-      <li>Configure GitHub Copilot with trimmed Azure MCP server for faster startup and a smaller footprint.</li>
+      <li>Support IntelliJ 2025.3 EAP.</li>
+      <li>Update the Azure MCP server name from releases list.</li>
       </ul>
       <p>You may get the full change log <a href="https://github.com/Microsoft/azure-tools-for-java/blob/develop/CHANGELOG.md">here</a></p>
     </html>

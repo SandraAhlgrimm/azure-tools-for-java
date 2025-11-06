@@ -119,7 +119,8 @@ extends:
                   targetType: inline
                   script: |
                     Set-Location ".\artifacts\intellij\folder"
-                    Compress-Archive -Path ".\*" -DestinationPath "..\..\azure-toolkit-for-intellij.zip" -Force
+                    Remove-Item -Path "*.log" -Force
+                    Compress-Archive -Path ".\*" -DestinationPath "..\..\azure-toolkit-for-intellij.zip" -CompressionLevel NoCompression -Force
               - task: CopyFiles@2
                 displayName: "Copy Files to: $(build.artifactstagingdirectory)"
                 inputs:

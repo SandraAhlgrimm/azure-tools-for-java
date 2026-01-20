@@ -1,0 +1,11 @@
+<idea-plugin>
+    <extensionPoints>
+        <extensionPoint qualifiedName="com.microsoft.tooling.msservices.intellij.azure.migrateChildNodeProvider" 
+                        interface="com.microsoft.azure.toolkit.intellij.appmod.IMigrateChildNodeProvider"/>
+    </extensionPoints>
+
+    <actions>
+        <group class="com.microsoft.azure.toolkit.intellij.appmod.MigrateToAzureAction" id="Actions.MigrateToAzure"
+               text="Migrate to Azure" description="Migrate application to Azure" icon="/icons/app_mod.svg" popup="true"/>
+    </actions>
+</idea-plugin>

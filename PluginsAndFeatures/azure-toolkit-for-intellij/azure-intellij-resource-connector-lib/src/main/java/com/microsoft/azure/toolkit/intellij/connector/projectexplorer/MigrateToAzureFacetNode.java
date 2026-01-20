@@ -1,0 +1,174 @@
+/*
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ */
+
+package com.microsoft.azure.toolkit.intellij.connector.projectexplorer;
+
+import com.intellij.ide.projectView.PresentationData;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.extensions.ExtensionPointName;
+import com.intellij.openapi.project.Project;
+import com.intellij.ui.tree.LeafState;
+import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
+import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
+import com.microsoft.azure.toolkit.intellij.appmod.IMigrateChildNodeProvider;
+import com.microsoft.azure.toolkit.intellij.appmod.MigrateNodeData;
+import com.microsoft.azure.toolkit.intellij.appmod.MigratePluginInstaller;
+
+import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Project Explorer facet node for "Migrate to Azure" functionality.
+ * Uses the same extension point as MigrateToAzureNode and MigrateToAzureAction for consistency.
+ */
+public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule> {
+    private static final ExtensionPointName<IMigrateChildNodeProvider> migrationProviders =
+        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateChildNodeProvider");
+    
+    private static final String APP_MOD_ICON_PATH = "/icons/app_mod.svg";
+
+    public MigrateToAzureFacetNode(Project project, AzureModule module) {
+        super(project, module);
+        initializeNode();
+    }
+
+    public void initializeNode() {
+        updateChildren();
+    }
+
+    @Override
+    public Collection<? extends AbstractAzureFacetNode<?>> buildChildren() {
+        final ArrayList<AbstractAzureFacetNode<?>> nodes = new ArrayList<>();
+        
+        if (MigratePluginInstaller.isAppModPluginInstalled()) {
+            // Load migration options from extension points
+            final List<MigrateNodeData> migrationNodes = loadMigrationNodes();
+            
+            // Convert MigrateNodeData to FacetNode
+            for (MigrateNodeData nodeData : migrationNodes) {
+                if (nodeData.isVisible()) {
+                    nodes.add(new MigrationNodeWrapper(getProject(), nodeData));
+                }
+            }
+        } else {
+            // Not installed - trigger install confirmation when user tries to expand
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+                    MigratePluginInstaller.showInstallConfirmation(getProject(), 
+                        () -> MigratePluginInstaller.installPlugin(getProject()));
+                }
+            });
+        }
+        
+        return nodes;
+    }
+
+    /**
+     * Loads migration nodes from extension point providers.
+     */
+    private List<MigrateNodeData> loadMigrationNodes() {
+        return migrationProviders.getExtensionList().stream()
+            .filter(provider -> provider.isApplicable(getProject()))
+            .sorted(Comparator.comparingInt(IMigrateChildNodeProvider::getPriority))
+            .flatMap(provider -> provider.createNodeData(getProject()).stream())
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    protected void buildView(@Nonnull PresentationData presentation) {
+        if (MigratePluginInstaller.isAppModPluginInstalled()) {
+            presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
+            presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+        } else {
+            final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
+            final String text = copilotInstalled 
+                ? "Migrate to Azure (Install App Modernization)" 
+                : "Migrate to Azure (Install Copilot & App Modernization)";
+            presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
+            presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+        }
+    }
+
+    /**
+     * Wrapper class that converts MigrateNodeData to AbstractAzureFacetNode for Project Explorer display.
+     */
+    private static class MigrationNodeWrapper extends AbstractAzureFacetNode<MigrateNodeData> {
+        private final MigrateNodeData nodeData;
+
+        protected MigrationNodeWrapper(Project project, MigrateNodeData nodeData) {
+            super(project, nodeData);
+            this.nodeData = nodeData;
+        }
+
+        @Override
+        public Collection<? extends AbstractAzureFacetNode<?>> buildChildren() {
+            final ArrayList<AbstractAzureFacetNode<?>> children = new ArrayList<>();
+            
+            // Get children - lazy or static (Project Explorer's buildChildren is already lazy)
+            final List<MigrateNodeData> childDataList = nodeData.isLazyLoading()
+                ? nodeData.getChildrenLoader().get()
+                : nodeData.getChildren();
+            
+            for (MigrateNodeData child : childDataList) {
+                if (child.isVisible()) {
+                    children.add(new MigrationNodeWrapper(getProject(), child));
+                }
+            }
+            
+            return children;
+        }
+
+        @Override
+        protected void buildView(@Nonnull PresentationData presentation) {
+            presentation.addText(nodeData.getLabel(), com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
+            
+            // Set description if available
+            if (nodeData.getDescription() != null) {
+                presentation.setLocationString(nodeData.getDescription());
+            }
+            
+            // Set tooltip if available
+            if (nodeData.getTooltip() != null) {
+                presentation.setTooltip(nodeData.getTooltip());
+            }
+            
+            // Use node's icon if available, otherwise use default app_mod icon
+            if (nodeData.getIconPath() != null) {
+                presentation.setIcon(IntelliJAzureIcons.getIcon(nodeData.getIconPath()));
+            } else {
+                presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+            }
+        }
+
+        @Override
+        public void navigate(boolean requestFocus) {
+            // Trigger click handler
+            nodeData.doubleClick(null);
+        }
+
+        @Override
+        public boolean canNavigate() {
+            // Enable navigation for leaf nodes OR nodes with click handlers
+            return !nodeData.hasChildren() || nodeData.hasClickHandler();
+        }
+
+        @Override
+        public boolean canNavigateToSource() {
+            // Enable source navigation only for leaf nodes
+            return !nodeData.hasChildren();
+        }
+
+        @Override
+        public @Nonnull LeafState getLeafState() {
+            // ALWAYS = leaf node (no expand arrow, double-click triggers navigate)
+            // NEVER = always show expand arrow
+            return nodeData.hasChildren() ? LeafState.NEVER : LeafState.ALWAYS;
+        }
+    }
+}

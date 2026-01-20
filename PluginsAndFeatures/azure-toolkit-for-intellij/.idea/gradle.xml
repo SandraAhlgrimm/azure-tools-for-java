@@ -14,6 +14,7 @@
             <option value="$PROJECT_DIR$/azure-intellij-plugin-appservice" />
             <option value="$PROJECT_DIR$/azure-intellij-plugin-appservice-java" />
             <option value="$PROJECT_DIR$/azure-intellij-plugin-arm" />
+            <option value="$PROJECT_DIR$/azure-intellij-plugin-azuremcp" />
             <option value="$PROJECT_DIR$/azure-intellij-plugin-bicep" />
             <option value="$PROJECT_DIR$/azure-intellij-plugin-cloud-shell" />
             <option value="$PROJECT_DIR$/azure-intellij-plugin-cognitiveservices" />
@@ -54,6 +55,9 @@
             <option value="$PROJECT_DIR$/azure-sdk-reference-book" />
           </set>
         </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/../../../copilot-intellij" />
       </GradleProjectSettings>
     </option>
   </component>

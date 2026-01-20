@@ -32,6 +32,7 @@ import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.intellij.common.component.Tree;
 import com.microsoft.azure.toolkit.intellij.common.component.TreeUtils;
 import com.microsoft.azure.toolkit.intellij.explorer.azd.AzdNode;
+import com.microsoft.azure.toolkit.intellij.appmod.MigrateToAzureNode;
 import com.microsoft.azure.toolkit.lib.Azure;
 import com.microsoft.azure.toolkit.lib.auth.AzureAccount;
 import com.microsoft.azure.toolkit.lib.auth.IAccountActions;
@@ -72,17 +73,20 @@ public class AzureExplorer extends Tree {
     public static final AzureExplorerNodeProviderManager manager = new AzureExplorerNodeProviderManager();
     public static final String AZURE_ICON = AzureIcons.Common.AZURE.getIconPath();
     private final AzdNode azdNode;
+    private final MigrateToAzureNode migrateToAzureNode;
 
     private AzureExplorer(Project project) {
         super();
         this.putClientProperty(PLACE, ResourceCommonActionsContributor.AZURE_EXPLORER);
         this.azdNode = new AzdNode(project);
+        this.migrateToAzureNode = new MigrateToAzureNode(project);
         this.root = new Node<>("Azure")
             .withChildrenLoadLazily(false)
             .addChild(buildFavoriteRoot())
             .addChild(buildAppGroupedResourcesRoot())
             .addChild(buildTypeGroupedResourcesRoot())
             .addChildren(buildNonAzServiceNodes())
+            .addChild(migrateToAzureNode)
             .addChild(azdNode);
 
         this.init(this.root);
@@ -124,6 +128,28 @@ public class AzureExplorer extends Tree {
                         azdNode.withDescription("");
                         azdNode.showAzdActions();
                         azdNode.refreshView();
+                        childNode.updateChildren(true);
+                        break;
+                    }
+                }
+            }
+        }));
+
+        AzureEventBus.on("migrate.plugin.installed", new AzureEventBus.EventListener(e -> {
+            final DefaultTreeModel model = (DefaultTreeModel) this.getModel();
+            final TreeNode<?> root = (TreeNode<?>) model.getRoot();
+            if (root != null && root.children() != null) {
+                Iterator<javax.swing.tree.TreeNode> iterator = root.children().asIterator();
+                while (iterator.hasNext()) {
+                    final TreeNode<?> childNode = (TreeNode<?>) iterator.next();
+                    final Node<?> childInnerNode = childNode.getInner();
+                    if (childInnerNode instanceof MigrateToAzureNode) {
+                        final MigrateToAzureNode migrateNode = (MigrateToAzureNode) childInnerNode;
+                        childNode.setAllowsChildren(true);
+                        migrateNode.clearClickHandlers();
+                        migrateNode.withDescription("");
+                        migrateNode.showMigrationOptions();
+                        migrateNode.refreshView();
                         childNode.updateChildren(true);
                         break;
                     }

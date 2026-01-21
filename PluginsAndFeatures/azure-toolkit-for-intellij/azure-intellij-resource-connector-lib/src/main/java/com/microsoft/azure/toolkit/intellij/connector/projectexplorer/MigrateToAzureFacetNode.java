@@ -6,13 +6,12 @@
 package com.microsoft.azure.toolkit.intellij.connector.projectexplorer;
 
 import com.intellij.ide.projectView.PresentationData;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.tree.LeafState;
 import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
-import com.microsoft.azure.toolkit.intellij.appmod.IMigrateChildNodeProvider;
+import com.microsoft.azure.toolkit.intellij.appmod.IMigrateOptionProvider;
 import com.microsoft.azure.toolkit.intellij.appmod.MigrateNodeData;
 import com.microsoft.azure.toolkit.intellij.appmod.MigratePluginInstaller;
 
@@ -28,8 +27,8 @@ import java.util.stream.Collectors;
  * Uses the same extension point as MigrateToAzureNode and MigrateToAzureAction for consistency.
  */
 public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule> {
-    private static final ExtensionPointName<IMigrateChildNodeProvider> migrationProviders =
-        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateChildNodeProvider");
+    private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
+        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
     
     private static final String APP_MOD_ICON_PATH = "/icons/app_mod.svg";
 
@@ -56,15 +55,8 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
                     nodes.add(new MigrationNodeWrapper(getProject(), nodeData));
                 }
             }
-        } else {
-            // Not installed - trigger install confirmation when user tries to expand
-            ApplicationManager.getApplication().invokeLater(() -> {
-                if (!MigratePluginInstaller.isAppModPluginInstalled()) {
-                    MigratePluginInstaller.showInstallConfirmation(getProject(), 
-                        () -> MigratePluginInstaller.installPlugin(getProject()));
-                }
-            });
         }
+        // When plugin not installed, return empty list - user must double-click to trigger install
         
         return nodes;
     }
@@ -75,7 +67,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     private List<MigrateNodeData> loadMigrationNodes() {
         return migrationProviders.getExtensionList().stream()
             .filter(provider -> provider.isApplicable(getProject()))
-            .sorted(Comparator.comparingInt(IMigrateChildNodeProvider::getPriority))
+            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
             .flatMap(provider -> provider.createNodeData(getProject()).stream())
             .collect(Collectors.toList());
     }
@@ -93,6 +85,28 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
             presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
             presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
         }
+    }
+
+    @Override
+    public void navigate(boolean requestFocus) {
+        // When plugin not installed, trigger install on double-click
+        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+            MigratePluginInstaller.showInstallConfirmation(getProject(), 
+                () -> MigratePluginInstaller.installPlugin(getProject()));
+        }
+    }
+
+    @Override
+    public boolean canNavigate() {
+        // Enable navigation (double-click) when plugin is not installed
+        return !MigratePluginInstaller.isAppModPluginInstalled();
+    }
+
+    @Override
+    public @Nonnull LeafState getLeafState() {
+        // When plugin not installed, show as leaf node (no expand arrow, double-click triggers navigate)
+        // When installed, show expand arrow to reveal children
+        return MigratePluginInstaller.isAppModPluginInstalled() ? LeafState.NEVER : LeafState.ALWAYS;
     }
 
     /**

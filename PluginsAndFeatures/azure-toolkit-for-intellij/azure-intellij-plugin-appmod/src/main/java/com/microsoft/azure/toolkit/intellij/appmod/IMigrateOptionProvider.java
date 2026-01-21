@@ -21,7 +21,7 @@ import java.util.List;
  * 
  * Example implementation:
  * <pre>
- * public class MyMigrationProvider implements IMigrateChildNodeProvider {
+ * public class MyMigrationProvider implements IMigrateOptionProvider {
  *     @Override
  *     public List&lt;MigrateNodeData&gt; createNodeData(@Nonnull Project project) {
  *         return List.of(
@@ -37,11 +37,11 @@ import java.util.List;
  * Registration in plugin.xml:
  * <pre>
  * &lt;extensions defaultExtensionNs="com.microsoft.tooling.msservices.intellij.azure"&gt;
- *     &lt;migrateChildNodeProvider implementation="your.package.MyMigrationProvider"/&gt;
+ *     &lt;migrateOptionProvider implementation="your.package.MyMigrationProvider"/&gt;
  * &lt;/extensions&gt;
  * </pre>
  */
-public interface IMigrateChildNodeProvider {
+public interface IMigrateOptionProvider {
     
     /**
      * Creates migration node data for the Migrate to Azure section.

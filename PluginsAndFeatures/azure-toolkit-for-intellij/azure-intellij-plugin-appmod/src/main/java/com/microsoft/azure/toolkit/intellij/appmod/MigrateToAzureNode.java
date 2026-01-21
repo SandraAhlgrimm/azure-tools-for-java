@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
  * This node extends the azure-toolkit-ide-common-lib Node class to integrate with the Service Explorer tree.
  */
 public final class MigrateToAzureNode extends Node<String> {
-    private static final ExtensionPointName<IMigrateChildNodeProvider> childProviders =
-        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateChildNodeProvider");
+    private static final ExtensionPointName<IMigrateOptionProvider> childProviders =
+        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
     
     private final Project project;
 
@@ -63,7 +63,7 @@ public final class MigrateToAzureNode extends Node<String> {
         // Load migration options from extension points and convert to Node
         final List<MigrateNodeData> nodeDataList = childProviders.getExtensionList().stream()
             .filter(provider -> provider.isApplicable(project))
-            .sorted(Comparator.comparingInt(IMigrateChildNodeProvider::getPriority))
+            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
             .flatMap(provider -> provider.createNodeData(project).stream())
             .collect(Collectors.toList());
         

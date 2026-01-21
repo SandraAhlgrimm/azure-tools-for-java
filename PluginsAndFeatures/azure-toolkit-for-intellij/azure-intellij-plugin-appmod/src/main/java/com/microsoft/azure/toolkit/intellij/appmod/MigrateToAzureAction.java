@@ -24,24 +24,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Action group that dynamically shows migration options as sub-menu.
- * Uses the same extension point as MigrateToAzureNode for consistency.
+ * Single action group for "Migrate to Azure" functionality.
+ * - When plugins not installed: sub-menu shows "Install Plugin" option
+ * - When plugins installed: sub-menu shows migration options from extension providers
  */
 public class MigrateToAzureAction extends ActionGroup {
-    private static final ExtensionPointName<IMigrateChildNodeProvider> migrationProviders =
-        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateChildNodeProvider");
+    private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
+        ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
     
     private static final String APP_MOD_ICON_PATH = "/icons/app_mod.svg";
 
     public MigrateToAzureAction() {
-        // Set popup=true to show this as a root menu item with expandable sub-menu (▶)
-        // Without this, children would be displayed directly at root level
         super("Migrate to Azure", true);
     }
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
-        // Run on background thread to avoid blocking EDT when loading migration options
         return ActionUpdateThread.BGT;
     }
 
@@ -52,14 +50,10 @@ public class MigrateToAzureAction extends ActionGroup {
         
         if (MigratePluginInstaller.isAppModPluginInstalled()) {
             e.getPresentation().setText("Migrate to Azure");
-            // Only show sub-menu if there are migration options available
             e.getPresentation().setEnabledAndVisible(project != null && hasMigrationOptions(project));
         } else {
-            final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
-            final String text = copilotInstalled 
-                ? "Migrate to Azure (Install App Modernization)" 
-                : "Migrate to Azure (Install Copilot & App Modernization)";
-            e.getPresentation().setText(text);
+            // Plugin not installed - still show menu with install option
+            e.getPresentation().setText("Migrate to Azure");
             e.getPresentation().setEnabledAndVisible(true);
         }
     }
@@ -77,18 +71,7 @@ public class MigrateToAzureAction extends ActionGroup {
 
         // If plugin not installed, show install action
         if (!MigratePluginInstaller.isAppModPluginInstalled()) {
-            final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
-            final String actionText = copilotInstalled 
-                ? "Install GitHub Copilot App Modernization" 
-                : "Install GitHub Copilot and GitHub Copilot App Modernization";
-            return new AnAction[]{
-                new AnAction(actionText) {
-                    @Override
-                    public void actionPerformed(@NotNull AnActionEvent event) {
-                        MigratePluginInstaller.showInstallConfirmation(project, () -> MigratePluginInstaller.installPlugin(project));
-                    }
-                }
-            };
+            return new AnAction[]{ createInstallAction(project) };
         }
 
         // Load migration options from extension points
@@ -101,6 +84,29 @@ public class MigrateToAzureAction extends ActionGroup {
         // Convert nodes to actions
         return convertNodesToActions(migrationNodes);
     }
+    
+    /**
+     * Creates the install plugin action shown when required plugins are not installed.
+     */
+    private AnAction createInstallAction(@Nonnull Project project) {
+        final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
+        final String text = copilotInstalled 
+            ? "Install App Modernization Plugin..." 
+            : "Install Copilot & App Modernization Plugins...";
+        
+        return new AnAction(text) {
+            {
+                getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+            }
+            
+            @Override
+            @AzureOperation(name = "user/appmod.install_plugin")
+            public void actionPerformed(@NotNull AnActionEvent e) {
+                MigratePluginInstaller.showInstallConfirmation(project, 
+                    () -> MigratePluginInstaller.installPlugin(project));
+            }
+        };
+    }
 
     /**
      * Loads migration nodes from extension point providers.
@@ -108,7 +114,7 @@ public class MigrateToAzureAction extends ActionGroup {
     private List<MigrateNodeData> loadMigrationNodes(@Nonnull Project project) {
         return migrationProviders.getExtensionList().stream()
             .filter(provider -> provider.isApplicable(project))
-            .sorted(Comparator.comparingInt(IMigrateChildNodeProvider::getPriority))
+            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
             .flatMap(provider -> provider.createNodeData(project).stream())
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());

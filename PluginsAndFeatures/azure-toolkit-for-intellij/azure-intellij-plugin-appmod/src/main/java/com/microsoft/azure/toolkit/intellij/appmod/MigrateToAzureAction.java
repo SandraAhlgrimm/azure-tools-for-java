@@ -13,6 +13,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
 import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
 import org.jetbrains.annotations.NotNull;
@@ -82,17 +84,16 @@ public class MigrateToAzureAction extends ActionGroup {
     }
     
     /**
-     * Creates a disabled action shown when no migration options are available.
+     * Creates an action to open App Modernization Panel when no migration options are available.
      */
     private AnAction createNoOptionsAction() {
-        return new AnAction("No migration options available") {
-            {
-                getTemplatePresentation().setEnabled(false);
-            }
-            
+        return new AnAction("Get Started with App Modernization") {
             @Override
             public void actionPerformed(@NotNull AnActionEvent e) {
-                // No-op
+                final Project project = e.getProject();
+                if (project != null) {
+                    AppModPanelHelper.openAppModPanel(project);
+                }
             }
         };
     }

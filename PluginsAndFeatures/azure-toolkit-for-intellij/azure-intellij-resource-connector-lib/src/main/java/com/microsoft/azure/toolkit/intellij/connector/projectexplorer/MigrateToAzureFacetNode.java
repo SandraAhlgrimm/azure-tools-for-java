@@ -10,6 +10,7 @@ import com.intellij.ide.projectView.PresentationData;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.tree.LeafState;
+import com.microsoft.azure.toolkit.intellij.appmod.AppModPanelHelper;
 import com.microsoft.azure.toolkit.intellij.appmod.Constants;
 import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
@@ -49,10 +50,15 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
             // Load migration options from extension points
             final List<MigrateNodeData> migrationNodes = loadMigrationNodes();
             
-            // Convert MigrateNodeData to FacetNode
-            for (MigrateNodeData nodeData : migrationNodes) {
-                if (nodeData.isVisible()) {
-                    nodes.add(new MigrationNodeWrapper(getProject(), nodeData));
+            if (migrationNodes.isEmpty()) {
+                // No migration options - add prompt to open App Modernization Panel
+                nodes.add(new OpenPanelNode(getProject()));
+            } else {
+                // Convert MigrateNodeData to FacetNode
+                for (MigrateNodeData nodeData : migrationNodes) {
+                    if (nodeData.isVisible()) {
+                        nodes.add(new MigrationNodeWrapper(getProject(), nodeData));
+                    }
                 }
             }
         }
@@ -107,6 +113,41 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         // When plugin not installed, show as leaf node (no expand arrow, double-click triggers navigate)
         // When installed, show expand arrow to reveal children
         return MigratePluginInstaller.isAppModPluginInstalled() ? LeafState.NEVER : LeafState.ALWAYS;
+    }
+
+    /**
+     * Node that opens the App Modernization Panel when no migration options are available.
+     */
+    private static class OpenPanelNode extends AbstractAzureFacetNode<String> {
+        protected OpenPanelNode(Project project) {
+            super(project, "Get Started with App Modernization");
+        }
+
+        @Override
+        public Collection<? extends AbstractAzureFacetNode<?>> buildChildren() {
+            return List.of();
+        }
+
+        @Override
+        protected void buildView(@Nonnull PresentationData presentation) {
+            presentation.addText("Get Started with App Modernization", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
+            presentation.setIcon(AllIcons.Toolwindows.ToolWindowProject);
+        }
+
+        @Override
+        public void navigate(boolean requestFocus) {
+            AppModPanelHelper.openAppModPanel(getProject());
+        }
+
+        @Override
+        public boolean canNavigate() {
+            return true;
+        }
+
+        @Override
+        public @Nonnull LeafState getLeafState() {
+            return LeafState.ALWAYS;
+        }
     }
 
     /**

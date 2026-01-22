@@ -9,6 +9,7 @@ import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcon;
+import com.microsoft.azure.toolkit.lib.common.messager.AzureMessager;
 
 import java.util.Comparator;
 import java.util.List;
@@ -26,6 +27,7 @@ public final class MigrateToAzureNode extends Node<String> {
 
     private static final AzureIcon APP_MOD_ICON = AzureIcon.builder().iconPath(Constants.ICON_APPMOD_PATH).build();
     private static final AzureIcon CHANGELIST_ICON = AzureIcon.builder().iconPath("/icons/changelist").build();
+    private static final AzureIcon TOOLWINDOW_ICON = AzureIcon.builder().iconPath("/icons/toolWindowProject").build();
 
     public MigrateToAzureNode(Project project) {
         super("Migrate to Azure");
@@ -47,8 +49,8 @@ public final class MigrateToAzureNode extends Node<String> {
         
         // Dynamic description based on what needs to be installed
         final String description = copilotInstalled 
-            ? "Install GitHub Copilot App Modernization" 
-            : "Install GitHub Copilot and GitHub Copilot App Modernization";
+            ? "Install App modernizationn"
+            : "Install GitHub Copilot and app modernization";
         withDescription(description);
         
         onClicked(e -> {
@@ -68,10 +70,25 @@ public final class MigrateToAzureNode extends Node<String> {
             .flatMap(provider -> provider.createNodeData(project).stream())
             .collect(Collectors.toList());
         
-        // Convert MigrateNodeData to Node and add as children
-        nodeDataList.stream()
-            .map(this::convertToNode)
-            .forEach(this::addChild);
+        if (nodeDataList.isEmpty()) {
+            // No migration options - add prompt to open App Modernization Panel
+            addChild(createOpenPanelNode());
+        } else {
+            // Convert MigrateNodeData to Node and add as children
+            nodeDataList.stream()
+                .map(this::convertToNode)
+                .forEach(this::addChild);
+        }
+    }
+    
+    /**
+     * Creates a node that opens the App Modernization Panel.
+     */
+    private Node<?> createOpenPanelNode() {
+        Node<String> node = new Node<>("Get Started with App Modernization");
+        node.withIcon(TOOLWINDOW_ICON);
+        node.onClicked(data -> AppModPanelHelper.openAppModPanel(project));
+        return node;
     }
     
     /**

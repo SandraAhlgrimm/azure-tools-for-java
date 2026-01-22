@@ -33,6 +33,8 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
         ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
     
+    private boolean hasMigrationOptions = false;
+    
     public MigrateToAzureFacetNode(Project project, AzureModule module) {
         super(project, module);
         initializeNode();
@@ -49,18 +51,15 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         if (MigratePluginInstaller.isAppModPluginInstalled()) {
             // Load migration options from extension points
             final List<MigrateNodeData> migrationNodes = loadMigrationNodes();
+            hasMigrationOptions = !migrationNodes.isEmpty();
             
-            if (migrationNodes.isEmpty()) {
-                // No migration options - add prompt to open App Modernization Panel
-                nodes.add(new OpenPanelNode(getProject()));
-            } else {
-                // Convert MigrateNodeData to FacetNode
-                for (MigrateNodeData nodeData : migrationNodes) {
-                    if (nodeData.isVisible()) {
-                        nodes.add(new MigrationNodeWrapper(getProject(), nodeData));
-                    }
+            // Convert MigrateNodeData to FacetNode
+            for (MigrateNodeData nodeData : migrationNodes) {
+                if (nodeData.isVisible()) {
+                    nodes.add(new MigrationNodeWrapper(getProject(), nodeData));
                 }
             }
+            // When no migration options, return empty - double-click opens App Mod Panel
         }
         // When plugin not installed, return empty list - user must double-click to trigger install
         
@@ -80,74 +79,48 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
 
     @Override
     protected void buildView(@Nonnull PresentationData presentation) {
-        if (MigratePluginInstaller.isAppModPluginInstalled()) {
-            presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
-            presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
-        } else {
+        presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
+        
+        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
             final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
             final String text = copilotInstalled 
                 ? "Migrate to Azure (Install App modernization)"
                 : "Migrate to Azure (Install GitHub Copilot and app modernization)";
             presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
-            presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
+        } else if (!hasMigrationOptions) {
+            presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
+            presentation.setLocationString("Open GitHub Copilot app modernization");
+        } else {
+            presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
         }
     }
 
     @Override
     public void navigate(boolean requestFocus) {
-        // When plugin not installed, trigger install on double-click
         if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+            // Plugin not installed - trigger install on double-click
             MigratePluginInstaller.showInstallConfirmation(getProject(), 
                 () -> MigratePluginInstaller.installPlugin(getProject()));
+        } else if (!hasMigrationOptions) {
+            // No migration options - open App Modernization Panel
+            AppModPanelHelper.openAppModPanel(getProject());
         }
     }
 
     @Override
     public boolean canNavigate() {
-        // Enable navigation (double-click) when plugin is not installed
-        return !MigratePluginInstaller.isAppModPluginInstalled();
+        // Enable navigation when plugin is not installed OR when no migration options
+        return !MigratePluginInstaller.isAppModPluginInstalled() || !hasMigrationOptions;
     }
 
     @Override
     public @Nonnull LeafState getLeafState() {
-        // When plugin not installed, show as leaf node (no expand arrow, double-click triggers navigate)
-        // When installed, show expand arrow to reveal children
-        return MigratePluginInstaller.isAppModPluginInstalled() ? LeafState.NEVER : LeafState.ALWAYS;
-    }
-
-    /**
-     * Node that opens the App Modernization Panel when no migration options are available.
-     */
-    private static class OpenPanelNode extends AbstractAzureFacetNode<String> {
-        protected OpenPanelNode(Project project) {
-            super(project, "Get Started with App Modernization");
-        }
-
-        @Override
-        public Collection<? extends AbstractAzureFacetNode<?>> buildChildren() {
-            return List.of();
-        }
-
-        @Override
-        protected void buildView(@Nonnull PresentationData presentation) {
-            presentation.addText("Get Started with App Modernization", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
-            presentation.setIcon(AllIcons.Toolwindows.ToolWindowProject);
-        }
-
-        @Override
-        public void navigate(boolean requestFocus) {
-            AppModPanelHelper.openAppModPanel(getProject());
-        }
-
-        @Override
-        public boolean canNavigate() {
-            return true;
-        }
-
-        @Override
-        public @Nonnull LeafState getLeafState() {
+        // Show as leaf node (no expand arrow) when plugin not installed or no migration options
+        // Show expand arrow when there are migration options to reveal
+        if (!MigratePluginInstaller.isAppModPluginInstalled() || !hasMigrationOptions) {
             return LeafState.ALWAYS;
         }
+        return LeafState.NEVER;
     }
 
     /**

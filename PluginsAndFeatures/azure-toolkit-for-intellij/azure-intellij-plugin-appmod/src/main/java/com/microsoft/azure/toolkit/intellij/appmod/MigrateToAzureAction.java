@@ -51,14 +51,30 @@ public class MigrateToAzureAction extends ActionGroup {
         super.update(e);
         final Project project = e.getProject();
         
-        // Only visible when plugin IS installed (MigrateToAzureInstallAction handles uninstalled case)
+        // Only visible when plugin IS installed AND has migration options
+        // (MigrateToAzureInstallAction handles not-installed and no-options cases)
         if (!MigratePluginInstaller.isAppModPluginInstalled()) {
             e.getPresentation().setEnabledAndVisible(false);
             return;
         }
         
+        if (project == null) {
+            e.getPresentation().setEnabledAndVisible(false);
+            return;
+        }
+        
+        // Check if there are any migration options
+        final boolean hasOptions = loadMigrationNodes(project).stream()
+            .anyMatch(MigrateNodeData::isVisible);
+        
+        if (!hasOptions) {
+            // No options - hide, MigrateToAzureInstallAction will handle this
+            e.getPresentation().setEnabledAndVisible(false);
+            return;
+        }
+        
         e.getPresentation().setText("Migrate to Azure");
-        e.getPresentation().setEnabledAndVisible(project != null);
+        e.getPresentation().setEnabledAndVisible(true);
     }
 
     @Override
@@ -74,28 +90,9 @@ public class MigrateToAzureAction extends ActionGroup {
 
         // Load migration options from extension points
         final List<MigrateNodeData> migrationNodes = loadMigrationNodes(project);
-        
-        if (migrationNodes.isEmpty()) {
-            return new AnAction[]{ createNoOptionsAction() };
-        }
 
         // Convert nodes to actions
         return convertNodesToActions(migrationNodes);
-    }
-    
-    /**
-     * Creates an action to open App Modernization Panel when no migration options are available.
-     */
-    private AnAction createNoOptionsAction() {
-        return new AnAction("Get Started with App Modernization") {
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e) {
-                final Project project = e.getProject();
-                if (project != null) {
-                    AppModPanelHelper.openAppModPanel(project);
-                }
-            }
-        };
     }
 
     /**

@@ -27,7 +27,6 @@ public final class MigrateToAzureNode extends Node<String> {
 
     private static final AzureIcon APP_MOD_ICON = AzureIcon.builder().iconPath(Constants.ICON_APPMOD_PATH).build();
     private static final AzureIcon CHANGELIST_ICON = AzureIcon.builder().iconPath("/icons/changelist").build();
-    private static final AzureIcon TOOLWINDOW_ICON = AzureIcon.builder().iconPath("/icons/toolWindowProject").build();
 
     public MigrateToAzureNode(Project project) {
         super("Migrate to Azure");
@@ -61,7 +60,6 @@ public final class MigrateToAzureNode extends Node<String> {
 
     public void showMigrationOptions() {
         clearClickHandlers();
-        withDescription("");
         
         // Load migration options from extension points and convert to Node
         final List<MigrateNodeData> nodeDataList = childProviders.getExtensionList().stream()
@@ -71,24 +69,16 @@ public final class MigrateToAzureNode extends Node<String> {
             .collect(Collectors.toList());
         
         if (nodeDataList.isEmpty()) {
-            // No migration options - add prompt to open App Modernization Panel
-            addChild(createOpenPanelNode());
+            // No migration options - click to open App Modernization Panel
+            withDescription("Open GitHub Copilot app modernization");
+            onClicked(e -> AppModPanelHelper.openAppModPanel(project));
         } else {
+            withDescription("");
             // Convert MigrateNodeData to Node and add as children
             nodeDataList.stream()
                 .map(this::convertToNode)
                 .forEach(this::addChild);
         }
-    }
-    
-    /**
-     * Creates a node that opens the App Modernization Panel.
-     */
-    private Node<?> createOpenPanelNode() {
-        Node<String> node = new Node<>("Get Started with App Modernization");
-        node.withIcon(TOOLWINDOW_ICON);
-        node.onClicked(data -> AppModPanelHelper.openAppModPanel(project));
-        return node;
     }
     
     /**

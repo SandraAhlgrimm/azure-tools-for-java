@@ -24,7 +24,8 @@ public final class MigrateToAzureNode extends Node<String> {
     
     private final Project project;
 
-    private static final AzureIcon APP_MOD_ICON = AzureIcon.builder().iconPath("/icons/app_mod.svg").build();
+    private static final AzureIcon APP_MOD_ICON = AzureIcon.builder().iconPath(Constants.ICON_APPMOD_PATH).build();
+    private static final AzureIcon CHANGELIST_ICON = AzureIcon.builder().iconPath("/icons/changelist").build();
 
     public MigrateToAzureNode(Project project) {
         super("Migrate to Azure");
@@ -81,11 +82,8 @@ public final class MigrateToAzureNode extends Node<String> {
         
         // Set basic properties
         node.withLabel(d -> d.getLabel());
-        // Use node's icon if available, otherwise use default app_mod icon
-        node.withIcon(d -> d.getIconPath() != null ? AzureIcon.builder().iconPath(d.getIconPath()).build() : APP_MOD_ICON);
-        if (data.getDescription() != null) {
-            node.withDescription(d -> d.getDescription());
-        }
+        // Use Changelist icon for child nodes
+        node.withIcon(CHANGELIST_ICON);
         if (data.getTooltip() != null) {
             node.withTips(d -> d.getTooltip());
         }

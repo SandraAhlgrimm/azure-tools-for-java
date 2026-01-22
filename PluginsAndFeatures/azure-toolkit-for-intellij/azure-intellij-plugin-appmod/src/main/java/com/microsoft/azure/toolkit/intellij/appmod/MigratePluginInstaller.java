@@ -86,12 +86,12 @@ public class MigratePluginInstaller {
         final boolean copilotInstalled = isCopilotInstalled();
         
         final String title = copilotInstalled 
-            ? "Install GitHub Copilot App Modernization" 
-            : "Install GitHub Copilot and GitHub Copilot App Modernization";
+            ? "Install App modernization"
+            : "Install GitHub Copilot and app modernization";
         
         final String message = copilotInstalled
-            ? "Do you want to install GitHub Copilot App Modernization plugin?"
-            : "Do you want to install GitHub Copilot and GitHub Copilot App Modernization plugins?";
+            ? "To migrate to Azure, you'll need a plugin: App modernization."
+            : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
         
         new InstallPluginDialog(project, title)
             .setLabel(message)
@@ -100,30 +100,23 @@ public class MigratePluginInstaller {
     }
     
     /**
-     * Installs the App Modernization plugin (and GitHub Copilot if needed).
-     * IntelliJ platform will handle the restart prompt after installation.
-     * In dev mode, shows instructions to manually restart runIde task instead.
+     * Installs the App Modernization plugin.
+     * IntelliJ platform will automatically install Copilot as a dependency if AppMod declares it.
      * 
      * @param project The current project
      */
     public static void installPlugin(@Nonnull Project project) {
-        final boolean copilotInstalled = isCopilotInstalled();
         final boolean appModInstalled = isAppModPluginInstalled();
-        final boolean isDevMode = isRunningInDevMode();
         
-        // Build plugin ID set - only include plugins that are NOT already installed
-        final Set<PluginId> pluginsToInstall = new LinkedHashSet<>();
-        if (!copilotInstalled) {
-            pluginsToInstall.add(PluginId.getId(COPILOT_PLUGIN_ID));
-        }
-        if (!appModInstalled) {
-            pluginsToInstall.add(PluginId.getId(PLUGIN_ID));
-        }
-        
-        // If all plugins are already installed, nothing to do
-        if (pluginsToInstall.isEmpty()) {
+        // If already installed, nothing to do
+        if (appModInstalled) {
             return;
         }
+        
+        // Only pass AppMod ID - IntelliJ will automatically install Copilot as dependency
+        // (AppMod's plugin.xml should declare <depends>com.github.copilot</depends>)
+        final Set<PluginId> pluginsToInstall = new LinkedHashSet<>();
+        pluginsToInstall.add(PluginId.getId(PLUGIN_ID));
         
         // Use PluginsAdvertiser.installAndEnable - IntelliJ handles the rest
         // The platform will show plugin selection dialog, download, install, and prompt for restart
@@ -135,20 +128,7 @@ public class MigratePluginInstaller {
                 true,   // selectAllInDialog - pre-select all plugins
                 null,   // modalityState
                 () -> {
-                    // Called after user confirms installation
-                    if (isDevMode) {
-                        // Dev mode: Show special instructions
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            final String message = "Plugins are being installed.\n\n" +
-                                "⚠️ DEVELOPMENT MODE:\n" +
-                                "After installation completes, do NOT restart from this IDE window!\n" +
-                                "Instead, stop your current runIde task and relaunch ./gradlew runIde";
-                            new RestartIdeDialog(project, "Development Mode Notice", message)
-                                .setShowRestartOption(false)
-                                .show();
-                        });
-                    }
-                    // Emit event
+                    // Emit event after installation
                     AzureEventBus.emit("migrate.plugin.installed");
                 }
             );

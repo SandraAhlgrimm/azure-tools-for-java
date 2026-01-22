@@ -5,10 +5,12 @@
 
 package com.microsoft.azure.toolkit.intellij.connector.projectexplorer;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.ide.projectView.PresentationData;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.tree.LeafState;
+import com.microsoft.azure.toolkit.intellij.appmod.Constants;
 import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
 import com.microsoft.azure.toolkit.intellij.appmod.IMigrateOptionProvider;
@@ -30,8 +32,6 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
         ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
     
-    private static final String APP_MOD_ICON_PATH = "/icons/app_mod.svg";
-
     public MigrateToAzureFacetNode(Project project, AzureModule module) {
         super(project, module);
         initializeNode();
@@ -76,14 +76,14 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     protected void buildView(@Nonnull PresentationData presentation) {
         if (MigratePluginInstaller.isAppModPluginInstalled()) {
             presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
-            presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+            presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
         } else {
             final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
             final String text = copilotInstalled 
-                ? "Migrate to Azure (Install App Modernization)" 
-                : "Migrate to Azure (Install Copilot & App Modernization)";
+                ? "Migrate to Azure (Install App modernization)"
+                : "Migrate to Azure (Install GitHub Copilot and app modernization)";
             presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
-            presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+            presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
         }
     }
 
@@ -142,22 +142,13 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         protected void buildView(@Nonnull PresentationData presentation) {
             presentation.addText(nodeData.getLabel(), com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
             
-            // Set description if available
-            if (nodeData.getDescription() != null) {
-                presentation.setLocationString(nodeData.getDescription());
-            }
-            
             // Set tooltip if available
             if (nodeData.getTooltip() != null) {
                 presentation.setTooltip(nodeData.getTooltip());
             }
             
             // Use node's icon if available, otherwise use default app_mod icon
-            if (nodeData.getIconPath() != null) {
-                presentation.setIcon(IntelliJAzureIcons.getIcon(nodeData.getIconPath()));
-            } else {
-                presentation.setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
-            }
+            presentation.setIcon(AllIcons.Vcs.Changelist);
         }
 
         @Override

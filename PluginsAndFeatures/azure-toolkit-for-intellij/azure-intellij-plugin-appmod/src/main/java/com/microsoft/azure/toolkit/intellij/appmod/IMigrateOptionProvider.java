@@ -26,7 +26,6 @@ import java.util.List;
  *     public List&lt;MigrateNodeData&gt; createNodeData(@Nonnull Project project) {
  *         return List.of(
  *             MigrateNodeData.builder("My Migration Option")
- *                 .iconPath("/icons/my_icon.svg")
  *                 .onClick(() -> performMigration(project))
  *                 .build()
  *         );

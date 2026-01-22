@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.toolkit.intellij.appmod;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -24,16 +25,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Single action group for "Migrate to Azure" functionality.
- * - When plugins not installed: sub-menu shows "Install Plugin" option
- * - When plugins installed: sub-menu shows migration options from extension providers
+ * ActionGroup for "Migrate to Azure" functionality.
+ * Only shown when App Modernization plugin IS installed.
+ * Shows migration options as sub-menu from extension providers.
+ * 
+ * Mutually exclusive with MigrateToAzureInstallAction (AnAction) which is shown when plugin is NOT installed.
  */
 public class MigrateToAzureAction extends ActionGroup {
     private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
         ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
     
-    private static final String APP_MOD_ICON_PATH = "/icons/app_mod.svg";
-
     public MigrateToAzureAction() {
         super("Migrate to Azure", true);
     }
@@ -48,14 +49,14 @@ public class MigrateToAzureAction extends ActionGroup {
         super.update(e);
         final Project project = e.getProject();
         
-        if (MigratePluginInstaller.isAppModPluginInstalled()) {
-            e.getPresentation().setText("Migrate to Azure");
-            e.getPresentation().setEnabledAndVisible(project != null && hasMigrationOptions(project));
-        } else {
-            // Plugin not installed - still show menu with install option
-            e.getPresentation().setText("Migrate to Azure");
-            e.getPresentation().setEnabledAndVisible(true);
+        // Only visible when plugin IS installed (MigrateToAzureInstallAction handles uninstalled case)
+        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+            e.getPresentation().setEnabledAndVisible(false);
+            return;
         }
+        
+        e.getPresentation().setText("Migrate to Azure");
+        e.getPresentation().setEnabledAndVisible(project != null);
     }
 
     @Override
@@ -69,16 +70,11 @@ public class MigrateToAzureAction extends ActionGroup {
             return AnAction.EMPTY_ARRAY;
         }
 
-        // If plugin not installed, show install action
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
-            return new AnAction[]{ createInstallAction(project) };
-        }
-
         // Load migration options from extension points
         final List<MigrateNodeData> migrationNodes = loadMigrationNodes(project);
         
         if (migrationNodes.isEmpty()) {
-            return AnAction.EMPTY_ARRAY;
+            return new AnAction[]{ createNoOptionsAction() };
         }
 
         // Convert nodes to actions
@@ -86,24 +82,17 @@ public class MigrateToAzureAction extends ActionGroup {
     }
     
     /**
-     * Creates the install plugin action shown when required plugins are not installed.
+     * Creates a disabled action shown when no migration options are available.
      */
-    private AnAction createInstallAction(@Nonnull Project project) {
-        final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
-        final String text = copilotInstalled 
-            ? "Install App Modernization Plugin..." 
-            : "Install Copilot & App Modernization Plugins...";
-        
-        return new AnAction(text) {
+    private AnAction createNoOptionsAction() {
+        return new AnAction("No migration options available") {
             {
-                getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
+                getTemplatePresentation().setEnabled(false);
             }
             
             @Override
-            @AzureOperation(name = "user/appmod.install_plugin")
             public void actionPerformed(@NotNull AnActionEvent e) {
-                MigratePluginInstaller.showInstallConfirmation(project, 
-                    () -> MigratePluginInstaller.installPlugin(project));
+                // No-op
             }
         };
     }
@@ -118,14 +107,6 @@ public class MigrateToAzureAction extends ActionGroup {
             .flatMap(provider -> provider.createNodeData(project).stream())
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
-    }
-
-    /**
-     * Checks if there are any migration options available.
-     */
-    private boolean hasMigrationOptions(@Nonnull Project project) {
-        return migrationProviders.getExtensionList().stream()
-            .anyMatch(provider -> provider.isApplicable(project));
     }
 
     /**
@@ -144,25 +125,18 @@ public class MigrateToAzureAction extends ActionGroup {
      */
     private AnAction convertNodeToAction(MigrateNodeData nodeData) {
         if (nodeData.hasChildren()) {
-            // For lazy loading nodes, create a LazyActionGroup that loads children on demand
-            if (nodeData.isLazyLoading()) {
-                return new LazyActionGroup(nodeData);
-            }
-            
-            // Node with static children -> create sub-menu with children added immediately
+            // Node with children -> create sub-menu
             final DefaultActionGroup subgroup = new DefaultActionGroup();
             subgroup.getTemplatePresentation().setText(nodeData.getLabel(), false);
             subgroup.setPopup(true);
+            subgroup.getTemplatePresentation().setIcon(AllIcons.Vcs.Changelist);
+
+            // Handle lazy loading or static children
+            final List<MigrateNodeData> children = nodeData.isLazyLoading() 
+                ? nodeData.getChildrenLoader().get() 
+                : nodeData.getChildren();
             
-            // Use node's icon if available, otherwise use default app_mod icon
-            if (nodeData.getIconPath() != null) {
-                subgroup.getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(nodeData.getIconPath()));
-            } else {
-                subgroup.getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
-            }
-            
-            // Add static children
-            for (MigrateNodeData child : nodeData.getChildren()) {
+            for (MigrateNodeData child : children) {
                 if (child.isVisible()) {
                     subgroup.add(convertNodeToAction(child));
                 }
@@ -173,12 +147,7 @@ public class MigrateToAzureAction extends ActionGroup {
             // Leaf node -> create clickable action
             return new AnAction(nodeData.getLabel()) {
                 {
-                    // Use node's icon if available, otherwise use default app_mod icon
-                    if (nodeData.getIconPath() != null) {
-                        getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(nodeData.getIconPath()));
-                    } else {
-                        getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
-                    }
+                    getTemplatePresentation().setIcon(AllIcons.Vcs.Changelist);
                     if (nodeData.getDescription() != null) {
                         getTemplatePresentation().setDescription(nodeData.getDescription());
                     }
@@ -190,88 +159,9 @@ public class MigrateToAzureAction extends ActionGroup {
                 }
                 
                 @Override
-                @AzureOperation(name = "user/common.migrate_to_azure.trigger_option")
+                @AzureOperation(name = "user/appmod.trigger_migrate_option")
                 public void actionPerformed(@NotNull AnActionEvent e) {
                     nodeData.click(e);
-                }
-            };
-        }
-    }
-    
-    /**
-     * ActionGroup that loads children lazily when the submenu is expanded.
-     * This avoids blocking the UI when the parent menu is shown.
-     */
-    private class LazyActionGroup extends ActionGroup {
-        private final MigrateNodeData nodeData;
-        private volatile AnAction[] cachedChildren;
-        private volatile boolean isLoading = false;
-        
-        // Loading placeholder action
-        private final AnAction loadingAction = new AnAction("Loading...") {
-            {
-                getTemplatePresentation().setEnabled(false);
-            }
-            
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e) {
-                // No-op, this is just a placeholder
-            }
-        };
-        
-        LazyActionGroup(MigrateNodeData nodeData) {
-            super(nodeData.getLabel(), true);
-            this.nodeData = nodeData;
-            
-            // Set icon
-            if (nodeData.getIconPath() != null) {
-                getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(nodeData.getIconPath()));
-            } else {
-                getTemplatePresentation().setIcon(IntelliJAzureIcons.getIcon(APP_MOD_ICON_PATH));
-            }
-        }
-        
-        @Override
-        public @NotNull ActionUpdateThread getActionUpdateThread() {
-            // Load children on background thread to avoid blocking EDT
-            return ActionUpdateThread.BGT;
-        }
-        
-        @Override
-        public AnAction @NotNull [] getChildren(@Nullable AnActionEvent e) {
-            if (cachedChildren != null) {
-                return cachedChildren;
-            }
-            
-            if (!isLoading) {
-                isLoading = true;
-                // Load children lazily
-                final List<MigrateNodeData> children = nodeData.getChildrenLoader().get();
-                final List<AnAction> actions = new ArrayList<>();
-                for (MigrateNodeData child : children) {
-                    if (child.isVisible()) {
-                        actions.add(convertNodeToAction(child));
-                    }
-                }
-                cachedChildren = actions.isEmpty() 
-                    ? new AnAction[]{ createNoOptionsAction() }
-                    : actions.toArray(new AnAction[0]);
-                return cachedChildren;
-            }
-            
-            // Still loading, show placeholder
-            return new AnAction[]{ loadingAction };
-        }
-        
-        private AnAction createNoOptionsAction() {
-            return new AnAction("No migration options available") {
-                {
-                    getTemplatePresentation().setEnabled(false);
-                }
-                
-                @Override
-                public void actionPerformed(@NotNull AnActionEvent e) {
-                    // No-op
                 }
             };
         }

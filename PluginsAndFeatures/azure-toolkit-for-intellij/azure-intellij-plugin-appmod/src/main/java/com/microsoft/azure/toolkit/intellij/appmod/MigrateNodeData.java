@@ -35,7 +35,6 @@ import java.util.function.Supplier;
  * 1. Simple leaf node with click action:
  * <pre>
  * MigrateNodeData.builder("Option A")
- *     .iconPath("/icons/my_icon.svg")
  *     .onClick(e -> doSomething())
  *     .build();
  * </pre>
@@ -65,12 +64,6 @@ public class MigrateNodeData {
      */
     @Nonnull
     private final String label;
-    
-    /**
-     * Icon path for the node (e.g., "/icons/app_mod.svg"). If null, a default icon will be used.
-     */
-    @Nullable
-    private String iconPath;
     
     /**
      * Description text (shown as secondary text in some views).
@@ -238,14 +231,6 @@ public class MigrateNodeData {
         
         private Builder(@Nonnull String label) {
             this.data = new MigrateNodeData(label);
-        }
-        
-        /**
-         * Sets the icon path.
-         */
-        public Builder iconPath(@Nullable String iconPath) {
-            data.iconPath = iconPath;
-            return this;
         }
         
         /**

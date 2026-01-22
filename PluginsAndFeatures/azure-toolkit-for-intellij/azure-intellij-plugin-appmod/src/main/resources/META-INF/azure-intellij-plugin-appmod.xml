@@ -5,15 +5,9 @@
     </extensionPoints>
 
     <actions>
-        <!-- Install action: shown when plugin NOT installed, click triggers installation -->
-        <action class="com.microsoft.azure.toolkit.intellij.appmod.MigrateToAzureInstallAction" 
-                id="Actions.MigrateToAzure.Install"
-                text="Migrate to Azure" description="Install App Modernization plugin" icon="/icons/appmod.svg"/>
-        
-        <!-- ActionGroup: shown when plugin IS installed, shows migration options as sub-menu -->
+        <!-- Unified ActionGroup: handles all states (not installed, no options, has options) -->
         <group class="com.microsoft.azure.toolkit.intellij.appmod.MigrateToAzureAction" 
                id="Actions.MigrateToAzure"
-               text="Migrate to Azure" description="Migrate application to Azure" icon="/icons/appmod.svg"
-               popup="true"/>
+               text="Migrate to Azure" description="Migrate application to Azure" icon="/icons/appmod.svg"/>
     </actions>
 </idea-plugin>

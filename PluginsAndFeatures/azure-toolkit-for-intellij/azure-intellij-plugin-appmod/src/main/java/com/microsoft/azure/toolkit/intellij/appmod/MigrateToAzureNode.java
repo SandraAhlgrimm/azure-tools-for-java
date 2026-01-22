@@ -9,8 +9,11 @@ import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcon;
-import com.microsoft.azure.toolkit.lib.common.messager.AzureMessager;
+import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
+import com.microsoft.azure.toolkit.lib.common.action.Action;
+import com.microsoft.azure.toolkit.lib.common.action.ActionGroup;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,6 +21,8 @@ import java.util.stream.Collectors;
 /**
  * Service Explorer node for "Migrate to Azure" functionality.
  * This node extends the azure-toolkit-ide-common-lib Node class to integrate with the Service Explorer tree.
+ * 
+ * State is computed on initialization and can be refreshed via refresh() method.
  */
 public final class MigrateToAzureNode extends Node<String> {
     private static final ExtensionPointName<IMigrateOptionProvider> childProviders =
@@ -32,15 +37,44 @@ public final class MigrateToAzureNode extends Node<String> {
         super("Migrate to Azure");
         this.project = project;
         withIcon(APP_MOD_ICON);
+        
+        // Add refresh action to context menu (only once in constructor)
+        withActions(new ActionGroup(
+            new Action<>(Action.Id.<String>of("user/appmod.refresh_migrate_node"))
+                .withLabel("Refresh")
+                .withIcon(AzureIcons.Action.REFRESH.getIconPath())
+                .withHandler((v, e) -> this.refresh())
+                .withAuthRequired(false)
+        ));
+        
+        // Use addChildren with a function so it rebuilds on refresh
+        addChildren(data -> buildChildNodes());
+        
         initializeNode();
     }
 
     public void initializeNode() {
-        if (MigratePluginInstaller.isAppModPluginInstalled()) {
-            showMigrationOptions();
-        } else {
+        // Clear previous state
+        clearClickHandlers();
+        withDescription("");
+        
+        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
             showNotInstalled();
         }
+        // Don't call showMigrationOptions() here - let buildChildNodes() handle it
+        // This avoids double loading of extension point data
+    }
+    
+    /**
+     * Refreshes the node by re-computing migration options.
+     * Called by RefreshMigrateToAzureAction from context menu.
+     */
+    public void refresh() {
+        refreshChildren();  // This rebuilds children from addChildren function
+    }
+
+    public Project getProject() {
+        return project;
     }
 
     private void showNotInstalled() {
@@ -48,7 +82,7 @@ public final class MigrateToAzureNode extends Node<String> {
         
         // Dynamic description based on what needs to be installed
         final String description = copilotInstalled 
-            ? "Install App modernizationn"
+            ? "Install App modernization"
             : "Install GitHub Copilot and app modernization";
         withDescription(description);
         
@@ -56,29 +90,42 @@ public final class MigrateToAzureNode extends Node<String> {
             MigratePluginInstaller.showInstallConfirmation(project, () -> MigratePluginInstaller.installPlugin(project));
         });
     }
-
-
-    public void showMigrationOptions() {
-        clearClickHandlers();
-        
-        // Load migration options from extension points and convert to Node
-        final List<MigrateNodeData> nodeDataList = childProviders.getExtensionList().stream()
+    
+    /**
+     * Load migration options from extension points.
+     */
+    private List<MigrateNodeData> loadMigrationNodeData() {
+        return childProviders.getExtensionList().stream()
             .filter(provider -> provider.isApplicable(project))
             .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
             .flatMap(provider -> provider.createNodeData(project).stream())
+            .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
+    }
+    
+    /**
+     * Build child nodes - called by Node framework on refresh.
+     * Also updates description and click handler based on data.
+     */
+    private List<Node<?>> buildChildNodes() {
+        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+            return List.of();
+        }
         
+        final List<MigrateNodeData> nodeDataList = loadMigrationNodeData();
+        
+        // Update description and click handler based on data
+        clearClickHandlers();
         if (nodeDataList.isEmpty()) {
-            // No migration options - click to open App Modernization Panel
             withDescription("Open GitHub Copilot app modernization");
             onClicked(e -> AppModPanelHelper.openAppModPanel(project));
         } else {
             withDescription("");
-            // Convert MigrateNodeData to Node and add as children
-            nodeDataList.stream()
-                .map(this::convertToNode)
-                .forEach(this::addChild);
         }
+        
+        return nodeDataList.stream()
+            .map(this::convertToNode)
+            .collect(Collectors.toList());
     }
     
     /**

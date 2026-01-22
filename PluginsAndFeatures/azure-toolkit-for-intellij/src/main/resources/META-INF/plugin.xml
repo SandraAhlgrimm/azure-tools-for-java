@@ -113,7 +113,6 @@
       <reference ref="Connector.ShowAzureNode"/>
       <reference ref="AzureToolkit.ConnectToAzureResource"/>
       <separator/>
-      <reference ref="Actions.MigrateToAzure.Install"/>
       <reference ref="Actions.MigrateToAzure"/>
       <separator/>
       <reference ref="Actions.RunFunction"/>

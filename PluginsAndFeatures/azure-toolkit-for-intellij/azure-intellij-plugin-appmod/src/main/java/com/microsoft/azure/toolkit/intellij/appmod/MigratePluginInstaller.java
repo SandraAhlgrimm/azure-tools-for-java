@@ -128,8 +128,6 @@ public class MigratePluginInstaller {
                 true,   // selectAllInDialog - pre-select all plugins
                 null,   // modalityState
                 () -> {
-                    // Emit event after installation
-                    AzureEventBus.emit("migrate.plugin.installed");
                 }
             );
         });

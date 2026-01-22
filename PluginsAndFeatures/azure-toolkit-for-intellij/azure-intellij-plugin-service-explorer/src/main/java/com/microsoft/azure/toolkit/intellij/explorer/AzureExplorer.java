@@ -134,28 +134,6 @@ public class AzureExplorer extends Tree {
                 }
             }
         }));
-
-        AzureEventBus.on("migrate.plugin.installed", new AzureEventBus.EventListener(e -> {
-            final DefaultTreeModel model = (DefaultTreeModel) this.getModel();
-            final TreeNode<?> root = (TreeNode<?>) model.getRoot();
-            if (root != null && root.children() != null) {
-                Iterator<javax.swing.tree.TreeNode> iterator = root.children().asIterator();
-                while (iterator.hasNext()) {
-                    final TreeNode<?> childNode = (TreeNode<?>) iterator.next();
-                    final Node<?> childInnerNode = childNode.getInner();
-                    if (childInnerNode instanceof MigrateToAzureNode) {
-                        final MigrateToAzureNode migrateNode = (MigrateToAzureNode) childInnerNode;
-                        childNode.setAllowsChildren(true);
-                        migrateNode.clearClickHandlers();
-                        migrateNode.withDescription("");
-                        migrateNode.showMigrationOptions();
-                        migrateNode.refreshView();
-                        childNode.updateChildren(true);
-                        break;
-                    }
-                }
-            }
-        }));
     }
 
     @Override

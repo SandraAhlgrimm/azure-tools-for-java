@@ -11,70 +11,142 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowManager;
-import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
+import com.intellij.openapi.util.Key;
 import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * ActionGroup for "Migrate to Azure" functionality.
- * Only shown when App Modernization plugin IS installed.
- * Shows migration options as sub-menu from extension providers.
+ * Unified ActionGroup for "Migrate to Azure" functionality.
+ * Handles all three states:
+ * 1. Plugin NOT installed - direct click triggers installation
+ * 2. Plugin installed but no migration options - shows "Open App Mod Panel" action
+ * 3. Plugin installed with migration options - sub-menu shows migration options
  * 
- * Mutually exclusive with MigrateToAzureInstallAction (AnAction) which is shown when plugin is NOT installed.
+ * Data is loaded once on first access and cached in Project.getUserData.
  */
 public class MigrateToAzureAction extends ActionGroup {
-    private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
+    private static final ExtensionPointName<IMigrateOptionProvider> MIGRATION_PROVIDERS =
         ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
+    private static final Key<MigrationState> STATE_KEY = Key.create("azure.migrate.action.state");
     
-    public MigrateToAzureAction() {
-        super("Migrate to Azure", true);
+    private enum State { NOT_INSTALLED, NO_OPTIONS, HAS_OPTIONS }
+    
+    private static class MigrationState {
+        final State state;
+        final List<MigrateNodeData> nodes;
+        
+        MigrationState(State state, List<MigrateNodeData> nodes) {
+            this.state = state;
+            this.nodes = nodes;
+        }
     }
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
         return ActionUpdateThread.BGT;
     }
+    
+    /**
+     * Gets or computes migration state for the project.
+     * State is cached in Project.getUserData and loaded once on first access.
+     */
+    private MigrationState getOrComputeState(Project project) {
+        MigrationState state = project.getUserData(STATE_KEY);
+        if (state == null) {
+            state = computeState(project);
+            project.putUserData(STATE_KEY, state);
+        }
+        return state;
+    }
+    
+    /**
+     * Computes migration state by calling providers.
+     */
+    private MigrationState computeState(Project project) {
+        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+            return new MigrationState(State.NOT_INSTALLED, List.of());
+        }
+        
+        final List<MigrateNodeData> nodes = MIGRATION_PROVIDERS.getExtensionList().stream()
+            .filter(provider -> provider.isApplicable(project))
+            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
+            .flatMap(provider -> provider.createNodeData(project).stream())
+            .filter(MigrateNodeData::isVisible)
+            .collect(Collectors.toList());
+        
+        return new MigrationState(
+            nodes.isEmpty() ? State.NO_OPTIONS : State.HAS_OPTIONS,
+            nodes
+        );
+    }
 
     @Override
     public void update(@NotNull AnActionEvent e) {
-        super.update(e);
         final Project project = e.getProject();
-        
-        // Only visible when plugin IS installed AND has migration options
-        // (MigrateToAzureInstallAction handles not-installed and no-options cases)
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
-            e.getPresentation().setEnabledAndVisible(false);
-            return;
-        }
-        
         if (project == null) {
             e.getPresentation().setEnabledAndVisible(false);
             return;
         }
         
-        // Check if there are any migration options
-        final boolean hasOptions = loadMigrationNodes(project).stream()
-            .anyMatch(MigrateNodeData::isVisible);
+        final MigrationState migrationState = getOrComputeState(project);
         
-        if (!hasOptions) {
-            // No options - hide, MigrateToAzureInstallAction will handle this
-            e.getPresentation().setEnabledAndVisible(false);
+        // Common settings for all states
+        e.getPresentation().setPopupGroup(true);
+        e.getPresentation().putClientProperty(ActionUtil.ALWAYS_VISIBLE_GROUP, true);
+        
+        switch (migrationState.state) {
+            case NOT_INSTALLED:
+                final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
+                e.getPresentation().setText(copilotInstalled 
+                    ? "Migrate to Azure (Install App modernization)" 
+                    : "Migrate to Azure (Install GitHub Copilot and app modernization)");
+                e.getPresentation().setPerformGroup(true);
+                e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, true);
+                break;
+            case NO_OPTIONS:
+                e.getPresentation().setText("Migrate to Azure (Open GitHub Copilot app modernization)");
+                e.getPresentation().setPerformGroup(true);
+                e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, true);
+                break;
+            case HAS_OPTIONS:
+                e.getPresentation().setText("Migrate to Azure");
+                e.getPresentation().setPerformGroup(false);
+                e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, false);
+                break;
+        }
+        e.getPresentation().setEnabledAndVisible(true);
+    }
+    
+    @Override
+    @AzureOperation(name = "user/appmod.migrate_action")
+    public void actionPerformed(@NotNull AnActionEvent e) {
+        final Project project = e.getProject();
+        if (project == null) {
             return;
         }
         
-        e.getPresentation().setText("Migrate to Azure");
-        e.getPresentation().setEnabledAndVisible(true);
+        final MigrationState migrationState = getOrComputeState(project);
+        
+        switch (migrationState.state) {
+            case NOT_INSTALLED:
+                MigratePluginInstaller.showInstallConfirmation(project, 
+                    () -> MigratePluginInstaller.installPlugin(project));
+                break;
+            case NO_OPTIONS:
+                AppModPanelHelper.openAppModPanel(project);
+                break;
+            case HAS_OPTIONS:
+                // Handled by popup menu
+                break;
+        }
     }
 
     @Override
@@ -82,54 +154,28 @@ public class MigrateToAzureAction extends ActionGroup {
         if (e == null) {
             return AnAction.EMPTY_ARRAY;
         }
-
+        
         final Project project = e.getProject();
         if (project == null) {
             return AnAction.EMPTY_ARRAY;
         }
-
-        // Load migration options from extension points
-        final List<MigrateNodeData> migrationNodes = loadMigrationNodes(project);
-
-        // Convert nodes to actions
-        return convertNodesToActions(migrationNodes);
-    }
-
-    /**
-     * Loads migration nodes from extension point providers.
-     */
-    private List<MigrateNodeData> loadMigrationNodes(@Nonnull Project project) {
-        return migrationProviders.getExtensionList().stream()
-            .filter(provider -> provider.isApplicable(project))
-            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
-            .flatMap(provider -> provider.createNodeData(project).stream())
-            .filter(MigrateNodeData::isVisible)
-            .collect(Collectors.toList());
-    }
-
-    /**
-     * Converts node tree to action tree for sub-menu display.
-     */
-    private AnAction[] convertNodesToActions(List<MigrateNodeData> nodes) {
-        final List<AnAction> actions = new ArrayList<>();
-        for (MigrateNodeData node : nodes) {
-            actions.add(convertNodeToAction(node));
+        
+        final MigrationState migrationState = getOrComputeState(project);
+        
+        if (migrationState.state == State.HAS_OPTIONS) {
+            return migrationState.nodes.stream()
+                .map(this::convertNodeToAction)
+                .toArray(AnAction[]::new);
         }
-        return actions.toArray(new AnAction[0]);
+        
+        return AnAction.EMPTY_ARRAY;
     }
-
-    /**
-     * Converts a single node (and its children) to an action.
-     */
+    
     private AnAction convertNodeToAction(MigrateNodeData nodeData) {
         if (nodeData.hasChildren()) {
-            // Node with children -> create sub-menu
-            final DefaultActionGroup subgroup = new DefaultActionGroup();
-            subgroup.getTemplatePresentation().setText(nodeData.getLabel(), false);
-            subgroup.setPopup(true);
+            final DefaultActionGroup subgroup = new DefaultActionGroup(nodeData.getLabel(), true);
             subgroup.getTemplatePresentation().setIcon(AllIcons.Vcs.Changelist);
 
-            // Handle lazy loading or static children
             final List<MigrateNodeData> children = nodeData.isLazyLoading() 
                 ? nodeData.getChildrenLoader().get() 
                 : nodeData.getChildren();
@@ -139,18 +185,9 @@ public class MigrateToAzureAction extends ActionGroup {
                     subgroup.add(convertNodeToAction(child));
                 }
             }
-            
             return subgroup;
         } else {
-            // Leaf node -> create clickable action
-            return new AnAction(nodeData.getLabel()) {
-                {
-                    getTemplatePresentation().setIcon(AllIcons.Vcs.Changelist);
-                    if (nodeData.getDescription() != null) {
-                        getTemplatePresentation().setDescription(nodeData.getDescription());
-                    }
-                }
-                
+            return new AnAction(nodeData.getLabel(), nodeData.getDescription(), AllIcons.Vcs.Changelist) {
                 @Override
                 public void update(@NotNull AnActionEvent e) {
                     e.getPresentation().setEnabled(nodeData.isEnabled());

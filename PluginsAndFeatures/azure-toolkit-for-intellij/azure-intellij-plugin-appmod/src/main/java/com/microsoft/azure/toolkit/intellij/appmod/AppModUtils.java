@@ -21,7 +21,7 @@ public final class AppModUtils {
     private static final Logger LOG = Logger.getInstance(AppModUtils.class);
     private static final String SERVICE_NAME = "appmod";
     // Set to true to enable telemetry debug logging (for development only)
-    private static final boolean DEBUG_TELEMETRY = true;
+    private static final boolean DEBUG_TELEMETRY = false;
 
     private AppModUtils() {
         // Utility class, no instantiation allowed

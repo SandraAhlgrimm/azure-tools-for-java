@@ -106,7 +106,7 @@ public class MigrateToAzureAction extends ActionGroup {
             case NOT_INSTALLED:
                 final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
                 e.getPresentation().setText(copilotInstalled 
-                    ? "Migrate to Azure (Install App modernization)" 
+                    ? "Migrate to Azure (Install Github Copilot app modernization)"
                     : "Migrate to Azure (Install GitHub Copilot and app modernization)");
                 e.getPresentation().setPerformGroup(true);
                 e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, true);

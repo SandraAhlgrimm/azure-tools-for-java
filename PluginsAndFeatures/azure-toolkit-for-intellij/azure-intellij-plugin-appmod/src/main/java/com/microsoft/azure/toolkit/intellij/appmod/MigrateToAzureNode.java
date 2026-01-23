@@ -82,7 +82,7 @@ public final class MigrateToAzureNode extends Node<String> {
         
         // Dynamic description based on what needs to be installed
         final String description = copilotInstalled 
-            ? "Install App modernization"
+            ? "Install Github Copilot app modernization"
             : "Install GitHub Copilot and app modernization";
         withDescription(description);
         

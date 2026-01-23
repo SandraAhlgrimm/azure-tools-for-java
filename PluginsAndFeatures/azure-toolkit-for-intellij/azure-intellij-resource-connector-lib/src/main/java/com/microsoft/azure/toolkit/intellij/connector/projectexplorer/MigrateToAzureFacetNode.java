@@ -118,7 +118,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         if (!MigratePluginInstaller.isAppModPluginInstalled()) {
             final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
             final String text = copilotInstalled 
-                ? "Migrate to Azure (Install App modernization)"
+                ? "Migrate to Azure (Install Github Copilot app modernization)"
                 : "Migrate to Azure (Install GitHub Copilot and app modernization)";
             presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
         } else if (!hasMigrationOptions()) {

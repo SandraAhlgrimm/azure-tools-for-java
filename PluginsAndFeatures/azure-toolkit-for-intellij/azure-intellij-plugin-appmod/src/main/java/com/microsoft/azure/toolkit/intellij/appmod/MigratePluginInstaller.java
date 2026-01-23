@@ -86,11 +86,11 @@ public class MigratePluginInstaller {
         final boolean copilotInstalled = isCopilotInstalled();
         
         final String title = copilotInstalled 
-            ? "Install App modernization"
+            ? "Install Github Copilot app modernization"
             : "Install GitHub Copilot and app modernization";
         
         final String message = copilotInstalled
-            ? "To migrate to Azure, you'll need a plugin: App modernization."
+            ? "Install this plugin to automate migrating your apps to Azure with Copilot."
             : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
         
         new InstallPluginDialog(project, title)

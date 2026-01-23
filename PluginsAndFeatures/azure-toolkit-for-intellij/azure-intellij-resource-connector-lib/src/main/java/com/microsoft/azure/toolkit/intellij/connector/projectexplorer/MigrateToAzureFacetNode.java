@@ -192,8 +192,8 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
             presentation.addText(nodeData.getLabel(), com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
             
             // Set tooltip if available
-            if (nodeData.getTooltip() != null) {
-                presentation.setTooltip(nodeData.getTooltip());
+            if (nodeData.getDescription() != null) {
+                presentation.setTooltip(nodeData.getDescription());
             }
             
             // Use node's icon if available, otherwise use default app_mod icon

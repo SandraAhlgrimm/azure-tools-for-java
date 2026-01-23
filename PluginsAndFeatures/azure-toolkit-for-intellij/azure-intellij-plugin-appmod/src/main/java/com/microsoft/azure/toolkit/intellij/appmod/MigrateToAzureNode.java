@@ -138,8 +138,8 @@ public final class MigrateToAzureNode extends Node<String> {
         node.withLabel(d -> d.getLabel());
         // Use Changelist icon for child nodes
         node.withIcon(CHANGELIST_ICON);
-        if (data.getTooltip() != null) {
-            node.withTips(d -> d.getTooltip());
+        if (data.getDescription() != null) {
+            node.withTips(d -> d.getDescription());
         }
         
         // Set click handler

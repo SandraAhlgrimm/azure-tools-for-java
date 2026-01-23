@@ -20,7 +20,7 @@ import java.util.function.Supplier;
  * This class is used by MigrateToAzureNode, MigrateToAzureAction, and MigrateToAzureFacetNode.
  * 
  * Features:
- * - Basic properties: label, icon, description, tooltip
+ * - Basic properties: label, description (used as menu description and tooltip)
  * - Click handling for both leaf and parent nodes
  * - Static children or lazy-loaded children via childrenLoader
  * 
@@ -66,16 +66,12 @@ public class MigrateNodeData {
     private final String label;
     
     /**
-     * Description text (shown as secondary text in some views).
+     * Description text. Used as:
+     * - Menu item description in MigrateToAzureAction
+     * - Tooltip in MigrateToAzureNode and MigrateToAzureFacetNode
      */
     @Nullable
     private String description;
-    
-    /**
-     * Tooltip text (shown on hover).
-     */
-    @Nullable
-    private String tooltip;
     
     // ==================== State ====================
     
@@ -234,18 +230,10 @@ public class MigrateNodeData {
         }
         
         /**
-         * Sets the description.
+         * Sets the description (used as menu description and tooltip).
          */
         public Builder description(@Nullable String description) {
             data.description = description;
-            return this;
-        }
-        
-        /**
-         * Sets the tooltip.
-         */
-        public Builder tooltip(@Nullable String tooltip) {
-            data.tooltip = tooltip;
             return this;
         }
         

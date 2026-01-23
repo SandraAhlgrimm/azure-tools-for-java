@@ -11,6 +11,7 @@ import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.tree.LeafState;
 import com.microsoft.azure.toolkit.intellij.appmod.AppModPanelHelper;
+import com.microsoft.azure.toolkit.intellij.appmod.AppModUtils;
 import com.microsoft.azure.toolkit.intellij.appmod.Constants;
 import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
@@ -65,12 +66,16 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         if (!MigratePluginInstaller.isAppModPluginInstalled()) {
             return List.of();
         }
-        return migrationProviders.getExtensionList().stream()
+        final List<MigrateNodeData> nodes = migrationProviders.getExtensionList().stream()
             .filter(provider -> provider.isApplicable(getProject()))
             .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
             .flatMap(provider -> provider.createNodeData(getProject()).stream())
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
+        if (nodes.isEmpty()) {
+            AppModUtils.logTelemetryEvent("facet.no-options");
+        }
+        return nodes;
     }
     
     /**
@@ -94,7 +99,10 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         final Action<Object> refreshAction = new Action<>(Action.Id.of("user/appmod.refresh_migrate_node"))
             .withLabel("Refresh")
             .withIcon(AzureIcons.Action.REFRESH.getIconPath())
-            .withHandler((v, e) -> refresh())
+            .withHandler((v, e) -> {
+                AppModUtils.logTelemetryEvent("facet.refresh");
+                refresh();
+            })
             .withAuthRequired(false);
         return new ActionGroup(refreshAction);
     }
@@ -133,11 +141,12 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     public void navigate(boolean requestFocus) {
         if (!MigratePluginInstaller.isAppModPluginInstalled()) {
             // Plugin not installed - trigger install on double-click
+            AppModUtils.logTelemetryEvent("facet.click-install");
             MigratePluginInstaller.showInstallConfirmation(getProject(), 
                 () -> MigratePluginInstaller.installPlugin(getProject()));
         } else if (!hasMigrationOptions()) {
             // No migration options - open App Modernization Panel
-            AppModPanelHelper.openAppModPanel(getProject());
+            AppModPanelHelper.openAppModPanel(getProject(), "facet");
         }
     }
 
@@ -203,6 +212,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         @Override
         public void navigate(boolean requestFocus) {
             // Trigger click handler
+            AppModUtils.logTelemetryEvent("facet.click-option", java.util.Map.of("label", nodeData.getLabel()));
             nodeData.doubleClick(null);
         }
 

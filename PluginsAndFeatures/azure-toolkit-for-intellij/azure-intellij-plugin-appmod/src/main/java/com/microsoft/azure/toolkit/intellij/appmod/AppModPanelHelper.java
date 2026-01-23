@@ -27,14 +27,17 @@ public final class AppModPanelHelper {
      * Opens the App Modernization Panel tool window.
      * 
      * @param project the current project
+     * @param source the source of the open request (e.g., "node", "action", "facet")
      */
-    public static void openAppModPanel(@Nonnull Project project) {
+    public static void openAppModPanel(@Nonnull Project project, @Nonnull String source) {
         final ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
         final ToolWindow toolWindow = toolWindowManager.getToolWindow(TOOL_WINDOW_ID);
         
         if (toolWindow != null) {
+            AppModUtils.logTelemetryEvent(source + ".open-panel");
             toolWindow.show();
         } else {
+            AppModUtils.logTelemetryEvent(source + ".open-panel-failed");
             AzureMessager.getMessager().warning("App Modernization Panel is not available. Please ensure the GitHub Copilot App Modernization plugin is installed and enabled.");
         }
     }

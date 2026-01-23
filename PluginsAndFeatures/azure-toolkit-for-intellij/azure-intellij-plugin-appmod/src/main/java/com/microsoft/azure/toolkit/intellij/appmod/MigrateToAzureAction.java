@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -82,6 +83,10 @@ public class MigrateToAzureAction extends ActionGroup {
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
         
+        if (nodes.isEmpty()) {
+            AppModUtils.logTelemetryEvent("action.no-options");
+        }
+        
         return new MigrationState(
             nodes.isEmpty() ? State.NO_OPTIONS : State.HAS_OPTIONS,
             nodes
@@ -126,7 +131,6 @@ public class MigrateToAzureAction extends ActionGroup {
     }
     
     @Override
-    @AzureOperation(name = "user/appmod.migrate_action")
     public void actionPerformed(@NotNull AnActionEvent e) {
         final Project project = e.getProject();
         if (project == null) {
@@ -137,11 +141,12 @@ public class MigrateToAzureAction extends ActionGroup {
         
         switch (migrationState.state) {
             case NOT_INSTALLED:
+                AppModUtils.logTelemetryEvent("action.click-install");
                 MigratePluginInstaller.showInstallConfirmation(project, 
                     () -> MigratePluginInstaller.installPlugin(project));
                 break;
             case NO_OPTIONS:
-                AppModPanelHelper.openAppModPanel(project);
+                AppModPanelHelper.openAppModPanel(project, "action");
                 break;
             case HAS_OPTIONS:
                 // Handled by popup menu
@@ -194,8 +199,8 @@ public class MigrateToAzureAction extends ActionGroup {
                 }
                 
                 @Override
-                @AzureOperation(name = "user/appmod.trigger_migrate_option")
                 public void actionPerformed(@NotNull AnActionEvent e) {
+                    AppModUtils.logTelemetryEvent("action.click-option", Map.of("label", nodeData.getLabel()));
                     nodeData.click(e);
                 }
             };

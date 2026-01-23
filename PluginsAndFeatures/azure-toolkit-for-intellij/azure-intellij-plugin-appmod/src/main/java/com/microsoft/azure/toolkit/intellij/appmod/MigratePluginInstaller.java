@@ -16,6 +16,7 @@ import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 
 import javax.annotation.Nonnull;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -110,6 +111,7 @@ public class MigratePluginInstaller {
         
         // If already installed, nothing to do
         if (appModInstalled) {
+            AppModUtils.logTelemetryEvent("plugin.install-skipped", Map.of("reason", "already-installed"));
             return;
         }
         
@@ -128,6 +130,7 @@ public class MigratePluginInstaller {
                 true,   // selectAllInDialog - pre-select all plugins
                 null,   // modalityState
                 () -> {
+                    AppModUtils.logTelemetryEvent("plugin.install-complete");
                 }
             );
         });

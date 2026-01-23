@@ -13,9 +13,9 @@ import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.ActionGroup;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +70,7 @@ public final class MigrateToAzureNode extends Node<String> {
      * Called by RefreshMigrateToAzureAction from context menu.
      */
     public void refresh() {
+        AppModUtils.logTelemetryEvent("node.refresh");
         refreshChildren();  // This rebuilds children from addChildren function
     }
 
@@ -87,6 +88,7 @@ public final class MigrateToAzureNode extends Node<String> {
         withDescription(description);
         
         onClicked(e -> {
+            AppModUtils.logTelemetryEvent("node.click-install");
             MigratePluginInstaller.showInstallConfirmation(project, () -> MigratePluginInstaller.installPlugin(project));
         });
     }
@@ -95,12 +97,16 @@ public final class MigrateToAzureNode extends Node<String> {
      * Load migration options from extension points.
      */
     private List<MigrateNodeData> loadMigrationNodeData() {
-        return childProviders.getExtensionList().stream()
+        final List<MigrateNodeData> nodes = childProviders.getExtensionList().stream()
             .filter(provider -> provider.isApplicable(project))
             .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
             .flatMap(provider -> provider.createNodeData(project).stream())
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
+        if (nodes.isEmpty()) {
+            AppModUtils.logTelemetryEvent("node.no-options");
+        }
+        return nodes;
     }
     
     /**
@@ -118,7 +124,9 @@ public final class MigrateToAzureNode extends Node<String> {
         clearClickHandlers();
         if (nodeDataList.isEmpty()) {
             withDescription("Open GitHub Copilot app modernization");
-            onClicked(e -> AppModPanelHelper.openAppModPanel(project));
+            onClicked(e -> {
+                AppModPanelHelper.openAppModPanel(project, "node");
+            });
         } else {
             withDescription("");
         }
@@ -144,7 +152,10 @@ public final class MigrateToAzureNode extends Node<String> {
         
         // Set click handler
         if (data.hasClickHandler()) {
-            node.onClicked(d -> data.click(null));
+            node.onClicked(d -> {
+                AppModUtils.logTelemetryEvent("node.click-option", Map.of("label", data.getLabel()));
+                data.click(null);
+            });
         }
         
         // Handle children - lazy or static

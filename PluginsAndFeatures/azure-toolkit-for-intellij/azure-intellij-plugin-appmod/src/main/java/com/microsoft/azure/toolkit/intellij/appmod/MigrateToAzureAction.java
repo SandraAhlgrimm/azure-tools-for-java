@@ -15,7 +15,7 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
-import com.microsoft.azure.toolkit.lib.common.operation.AzureOperation;
+import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +72,7 @@ public class MigrateToAzureAction extends ActionGroup {
      * Computes migration state by calling providers.
      */
     private MigrationState computeState(Project project) {
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             return new MigrationState(State.NOT_INSTALLED, List.of());
         }
         
@@ -109,7 +109,7 @@ public class MigrateToAzureAction extends ActionGroup {
         
         switch (migrationState.state) {
             case NOT_INSTALLED:
-                final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
+                final boolean copilotInstalled = AppModPluginInstaller.isCopilotInstalled();
                 e.getPresentation().setText(copilotInstalled 
                     ? "Migrate to Azure (Install Github Copilot app modernization)"
                     : "Migrate to Azure (Install GitHub Copilot and app modernization)");
@@ -142,8 +142,8 @@ public class MigrateToAzureAction extends ActionGroup {
         switch (migrationState.state) {
             case NOT_INSTALLED:
                 AppModUtils.logTelemetryEvent("action.click-install");
-                MigratePluginInstaller.showInstallConfirmation(project, 
-                    () -> MigratePluginInstaller.installPlugin(project));
+                AppModPluginInstaller.showInstallConfirmation(project,
+                    () -> AppModPluginInstaller.installPlugin(project));
                 break;
             case NO_OPTIONS:
                 AppModPanelHelper.openAppModPanel(project, "action");

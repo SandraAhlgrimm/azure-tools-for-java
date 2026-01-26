@@ -17,7 +17,7 @@ import com.microsoft.azure.toolkit.intellij.common.IntelliJAzureIcons;
 import com.microsoft.azure.toolkit.intellij.connector.dotazure.AzureModule;
 import com.microsoft.azure.toolkit.intellij.appmod.IMigrateOptionProvider;
 import com.microsoft.azure.toolkit.intellij.appmod.MigrateNodeData;
-import com.microsoft.azure.toolkit.intellij.appmod.MigratePluginInstaller;
+import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.ActionGroup;
@@ -63,7 +63,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
      * Computes migration nodes from extension point providers.
      */
     private List<MigrateNodeData> computeMigrationNodes() {
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             return List.of();
         }
         final List<MigrateNodeData> nodes = migrationProviders.getExtensionList().stream()
@@ -123,8 +123,8 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     protected void buildView(@Nonnull PresentationData presentation) {
         presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
         
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
-            final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+            final boolean copilotInstalled = AppModPluginInstaller.isCopilotInstalled();
             final String text = copilotInstalled 
                 ? "Migrate to Azure (Install Github Copilot app modernization)"
                 : "Migrate to Azure (Install GitHub Copilot and app modernization)";
@@ -139,11 +139,11 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
 
     @Override
     public void navigate(boolean requestFocus) {
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             // Plugin not installed - trigger install on double-click
             AppModUtils.logTelemetryEvent("facet.click-install");
-            MigratePluginInstaller.showInstallConfirmation(getProject(), 
-                () -> MigratePluginInstaller.installPlugin(getProject()));
+            AppModPluginInstaller.showInstallConfirmation(getProject(),
+                () -> AppModPluginInstaller.installPlugin(getProject()));
         } else if (!hasMigrationOptions()) {
             // No migration options - open App Modernization Panel
             AppModPanelHelper.openAppModPanel(getProject(), "facet");
@@ -153,14 +153,14 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     @Override
     public boolean canNavigate() {
         // Enable navigation when plugin is not installed OR when no migration options
-        return !MigratePluginInstaller.isAppModPluginInstalled() || !hasMigrationOptions();
+        return !AppModPluginInstaller.isAppModPluginInstalled() || !hasMigrationOptions();
     }
 
     @Override
     public @Nonnull LeafState getLeafState() {
         // Use ASYNC to avoid triggering extension point loading synchronously
         // The actual leaf state will be determined when buildChildren() is called
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             return LeafState.ALWAYS;
         }
         // ASYNC means IntelliJ will call buildChildren() to determine if there are children

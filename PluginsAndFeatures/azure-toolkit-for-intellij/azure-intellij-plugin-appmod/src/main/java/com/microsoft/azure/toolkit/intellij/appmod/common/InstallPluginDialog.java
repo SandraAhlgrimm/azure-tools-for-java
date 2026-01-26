@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
 
-package com.microsoft.azure.toolkit.intellij.appmod;
+package com.microsoft.azure.toolkit.intellij.appmod.common;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
@@ -62,7 +62,7 @@ public class InstallPluginDialog extends DialogWrapper {
         } else {
             labelComponent = new JLabel(label);
         }
-        labelComponent.setHorizontalAlignment(SwingConstants.CENTER);
+        labelComponent.setHorizontalAlignment(SwingConstants.LEFT);
         panel.add(labelComponent, BorderLayout.CENTER);
         return panel;
     }

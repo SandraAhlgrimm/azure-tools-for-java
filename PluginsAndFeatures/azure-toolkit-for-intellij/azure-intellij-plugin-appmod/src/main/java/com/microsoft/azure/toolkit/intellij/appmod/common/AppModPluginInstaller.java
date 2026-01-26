@@ -3,16 +3,15 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
 
-package com.microsoft.azure.toolkit.intellij.appmod;
+package com.microsoft.azure.toolkit.intellij.appmod.common;
 
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManagerCore;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginsAdvertiser;
-import com.microsoft.azure.toolkit.lib.common.event.AzureEventBus;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
+import com.microsoft.azure.toolkit.intellij.appmod.AppModUtils;
 
 import javax.annotation.Nonnull;
 import java.util.LinkedHashSet;
@@ -24,11 +23,11 @@ import java.util.Set;
  * This centralizes all plugin detection and installation logic to avoid code duplication
  * between MigrateToAzureNode and MigrateToAzureAction.
  */
-public class MigratePluginInstaller {
+public class AppModPluginInstaller {
     private static final String PLUGIN_ID = "com.github.copilot.appmod";
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
     
-    private MigratePluginInstaller() {
+    private AppModPluginInstaller() {
         // Utility class - prevent instantiation
     }
     

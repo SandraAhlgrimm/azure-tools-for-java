@@ -10,6 +10,7 @@ import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcon;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
+import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.ActionGroup;
 
@@ -58,7 +59,7 @@ public final class MigrateToAzureNode extends Node<String> {
         clearClickHandlers();
         withDescription("");
         
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             showNotInstalled();
         }
         // Don't call showMigrationOptions() here - let buildChildNodes() handle it
@@ -79,7 +80,7 @@ public final class MigrateToAzureNode extends Node<String> {
     }
 
     private void showNotInstalled() {
-        final boolean copilotInstalled = MigratePluginInstaller.isCopilotInstalled();
+        final boolean copilotInstalled = AppModPluginInstaller.isCopilotInstalled();
         
         // Dynamic description based on what needs to be installed
         final String description = copilotInstalled 
@@ -89,7 +90,7 @@ public final class MigrateToAzureNode extends Node<String> {
         
         onClicked(e -> {
             AppModUtils.logTelemetryEvent("node.click-install");
-            MigratePluginInstaller.showInstallConfirmation(project, () -> MigratePluginInstaller.installPlugin(project));
+            AppModPluginInstaller.showInstallConfirmation(project, () -> AppModPluginInstaller.installPlugin(project));
         });
     }
     
@@ -114,7 +115,7 @@ public final class MigrateToAzureNode extends Node<String> {
      * Also updates description and click handler based on data.
      */
     private List<Node<?>> buildChildNodes() {
-        if (!MigratePluginInstaller.isAppModPluginInstalled()) {
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             return List.of();
         }
         
@@ -183,6 +184,6 @@ public final class MigrateToAzureNode extends Node<String> {
     }
 
     public static boolean isPluginInstalled() {
-        return MigratePluginInstaller.isAppModPluginInstalled();
+        return AppModPluginInstaller.isAppModPluginInstalled();
     }
 }

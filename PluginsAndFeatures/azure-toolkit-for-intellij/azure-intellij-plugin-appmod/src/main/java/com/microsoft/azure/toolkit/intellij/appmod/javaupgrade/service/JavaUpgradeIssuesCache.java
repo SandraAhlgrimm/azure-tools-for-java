@@ -30,6 +30,7 @@ public final class JavaUpgradeIssuesCache implements Disposable {
     private final Project project;
     private final AtomicReference<List<JavaUpgradeIssue>> jdkIssuesCache = new AtomicReference<>();
     private final AtomicReference<List<JavaUpgradeIssue>> dependencyIssuesCache = new AtomicReference<>();
+    private final AtomicReference<List<JavaUpgradeIssue>> cvesIssuesCache = new AtomicReference<>();
     private final AtomicBoolean initialized = new AtomicBoolean(false);
 
     public JavaUpgradeIssuesCache(@NotNull Project project) {
@@ -59,14 +60,46 @@ public final class JavaUpgradeIssuesCache implements Disposable {
     }
 
     /**
-     * Finds a specific issue by package ID prefix.
+     * Gets cached CVE issues. Returns empty list if not yet initialized.
      */
+    @Nonnull
+    public List<JavaUpgradeIssue> getCveIssues() {
+        List<JavaUpgradeIssue> cached = cvesIssuesCache.get();
+        return cached != null ? cached : Collections.emptyList();
+    }
+
+    /**
+     * Finds a specific CVE issue by package ID prefix.
+     */
+    @Nullable
+    public JavaUpgradeIssue findCveIssue(@Nonnull String packageIdPrefix) {
+        return getCveIssues().stream()
+            .filter(i -> i.getPackageId().startsWith(packageIdPrefix))
+            .findFirst()
+            .orElse(null);
+    }
+    /**
+     * Finds the first issue matching a package ID prefix.
+     * @deprecated Use {@link #findDependencyIssues(String)} to handle multiple dependencies with the same groupId.
+     */
+    @Deprecated
     @Nullable
     public JavaUpgradeIssue findDependencyIssue(@Nonnull String packageIdPrefix) {
         return getDependencyIssues().stream()
             .filter(i -> i.getPackageId().startsWith(packageIdPrefix))
             .findFirst()
             .orElse(null);
+    }
+
+    /**
+     * Finds all issues matching a package ID prefix (groupId).
+     * This handles the case where multiple dependencies share the same groupId.
+     */
+    @Nonnull
+    public List<JavaUpgradeIssue> findDependencyIssues(@Nonnull String packageIdPrefix) {
+        return getDependencyIssues().stream()
+            .filter(i -> i.getPackageId().startsWith(packageIdPrefix))
+            .toList();
     }
 
     /**
@@ -99,10 +132,11 @@ public final class JavaUpgradeIssuesCache implements Disposable {
         // Scan for issues
         List<JavaUpgradeIssue> jdkIssues = detectionService.getJavaIssues(project);
         List<JavaUpgradeIssue> dependencyIssues = detectionService.getDependencyIssues(project);
-        
+        List<JavaUpgradeIssue> cveIssues = detectionService.getCVEIssues(project);
         // Update cache
         jdkIssuesCache.set(Collections.unmodifiableList(jdkIssues));
         dependencyIssuesCache.set(Collections.unmodifiableList(dependencyIssues));
+        cvesIssuesCache.set(Collections.unmodifiableList(cveIssues));
         initialized.set(true);
     }
 
@@ -112,6 +146,7 @@ public final class JavaUpgradeIssuesCache implements Disposable {
     public void invalidate() {
         jdkIssuesCache.set(null);
         dependencyIssuesCache.set(null);
+        cvesIssuesCache.set(null);
         initialized.set(false);
     }
 

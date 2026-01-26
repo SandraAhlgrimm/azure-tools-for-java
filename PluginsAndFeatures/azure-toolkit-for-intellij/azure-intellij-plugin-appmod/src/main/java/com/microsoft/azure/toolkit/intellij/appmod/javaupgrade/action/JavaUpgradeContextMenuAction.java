@@ -15,19 +15,20 @@ import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersi
 
 import org.jetbrains.annotations.NotNull;
 
+import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN;
+import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.isAppModPluginInstalled;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
+
 /**
- * Action to upgrade a Java project using GitHub Copilot.
+ * Context menu action to upgrade a Java project using GitHub Copilot.
  * This action appears in the GitHub Copilot submenu when right-clicking on:
  * - Project root folder
  * - pom.xml (Maven projects)
  * - build.gradle or build.gradle.kts (Gradle projects)
  */
-public class UpgradeProjectAction extends AnAction {
-
-    private static final String UPGRADE_JAVA_PROMPT = "Upgrade java runtime and java framework dependencies of this project to the latest LTS version using java upgrade tools by invoking #generate_upgrade_plan";
-
+public class JavaUpgradeContextMenuAction extends AnAction {
     // text, description, and icon are defined in azure-intellij-plugin-appmod.xml
-    public UpgradeProjectAction() {
+    public JavaUpgradeContextMenuAction() {
         super();
     }
 
@@ -49,7 +50,9 @@ public class UpgradeProjectAction extends AnAction {
                       isMavenBuildFile(file) || 
                       isGradleBuildFile(file);
         }
-        
+        if (!isAppModPluginInstalled()) {
+            e.getPresentation().setText(e.getPresentation().getText() + TO_INSTALL_APP_MODE_PLUGIN);
+        }
         e.getPresentation().setEnabledAndVisible(visible);
     }
 
@@ -71,7 +74,7 @@ public class UpgradeProjectAction extends AnAction {
      * Builds the upgrade prompt based on the selected file.
      */
     private String buildUpgradePrompt(Project project, VirtualFile file) {
-        return UPGRADE_JAVA_PROMPT;
+        return UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
     }
 
     /**

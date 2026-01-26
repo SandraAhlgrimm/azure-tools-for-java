@@ -72,7 +72,7 @@ public class JavaUpgradeCheckStartupActivity implements ProjectActivity, DumbAwa
                 final List<JavaUpgradeIssue> allIssues = new java.util.ArrayList<>();
                 allIssues.addAll(cache.getJdkIssues());
                 allIssues.addAll(cache.getDependencyIssues());
-                allIssues.addAll(detectionService.getCVEIssues(project));
+                allIssues.addAll(cache.getCveIssues());
                 
                 // Update UI on the main thread
                 AzureTaskManager.getInstance().runLater(() -> {

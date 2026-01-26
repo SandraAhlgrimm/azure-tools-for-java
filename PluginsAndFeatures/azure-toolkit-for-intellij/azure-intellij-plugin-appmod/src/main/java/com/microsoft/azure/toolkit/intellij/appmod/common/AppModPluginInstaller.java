@@ -26,7 +26,7 @@ import java.util.Set;
 public class AppModPluginInstaller {
     private static final String PLUGIN_ID = "com.github.copilot.appmod";
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
-    
+    public static final String TO_INSTALL_APP_MODE_PLUGIN = " (Install Github Copilot app modernization)";
     private AppModPluginInstaller() {
         // Utility class - prevent instantiation
     }

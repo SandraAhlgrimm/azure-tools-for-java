@@ -188,8 +188,6 @@ public class JavaUpgradeIssuesDetectionService {
     private static final String JDK_LEARN_MORE_URL = 
         "https://learn.microsoft.com/azure/developer/java/fundamentals/java-support-on-azure";
     
-    private static final Logger LOG = Logger.getInstance(JavaUpgradeIssuesDetectionService.class);
-    
     private static JavaUpgradeIssuesDetectionService instance;
     
     private JavaUpgradeIssuesDetectionService() {
@@ -200,33 +198,6 @@ public class JavaUpgradeIssuesDetectionService {
             instance = new JavaUpgradeIssuesDetectionService();
         }
         return instance;
-    }
-    
-    /**
-     * Analyzes the given project and returns a list of detected outdated version issues.
-     *
-     * @param project The IntelliJ project to analyze
-     * @return List of detected outdated version issues
-     */
-    @Nonnull
-    public List<JavaUpgradeIssue> analyzeProject(@Nonnull Project project) {
-        final List<JavaUpgradeIssue> issues = new ArrayList<>();
-
-        try {
-            // Get JDK issues
-            issues.addAll(getJavaIssues(project));
-
-            // Get dependency issues
-            issues.addAll(getDependencyIssues(project));
-
-            // Get CVE issues
-            issues.addAll(getCVEIssues(project));
-
-        } catch (Exception e) {
-            // Error analyzing project for upgrade issues
-        }
-
-        return issues;
     }
     
     /**
@@ -434,17 +405,12 @@ public class JavaUpgradeIssuesDetectionService {
                                     @Nonnull String artifactId) {
         try {
             final var parentId = mavenProject.getParentId();
-            LOG.info("getParentVersion: parentId=" + (parentId != null ? 
-                parentId.getGroupId() + ":" + parentId.getArtifactId() + ":" + parentId.getVersion() : "null") +
-                ", looking for " + groupId + ":" + artifactId);
             if (parentId != null && 
                 groupId.equals(parentId.getGroupId()) && 
                 artifactId.equals(parentId.getArtifactId())) {
-                LOG.info("getParentVersion: Found matching parent version: " + parentId.getVersion());
                 return parentId.getVersion();
             }
         } catch (Exception e) {
-            LOG.warn("Error getting parent version", e);
         }
         return null;
     }

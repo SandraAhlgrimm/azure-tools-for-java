@@ -5,6 +5,7 @@
 
 package com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service;
 
+import com.intellij.util.net.JdkProxyProvider;
 import com.intellij.util.net.ssl.CertificateManager;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
 import com.google.gson.Gson;
@@ -127,6 +128,9 @@ public class CVECheckService {
         final HttpClient.Builder builder = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS));
         try {
+            // Configure proxy using IntelliJ's JdkProxyProvider
+            // This respects the IDE's proxy settings (Settings → HTTP Proxy)
+            builder.proxy(JdkProxyProvider.getInstance().getProxySelector());
             builder.sslContext(CertificateManager.getInstance().getSslContext());
         } catch (Throwable e) {
             // Failed to get IntelliJ SSL context, using default

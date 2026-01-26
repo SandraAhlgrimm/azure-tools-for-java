@@ -13,18 +13,21 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
+import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
+import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Intention action to upgrade vulnerable dependencies using GitHub Copilot.
- * This action appears in the editor's quick-fix popup (More actions...) for pom.xml files
- * when a vulnerable dependency is detected.
- */
-public class UpgradeInQuickFixIntentionAction implements IntentionAction, PriorityAction {
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.SCAN_AND_RESOLVE_CVES_PROMPT;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME;
 
-    private static final String DEFAULT_TEXT = "Scan and Resolve CVEs by Copilot";
+/**
+ * Intention action to fix CVE vulnerabilities in dependencies using GitHub Copilot.
+ * This action appears in the editor's quick-fix popup (More actions...) for pom.xml files(yellow wavy dependency with CVE issue)
+ * when a vulnerable dependency with CVE issues is detected.
+ */
+public class CveFixIntentionAction implements IntentionAction, PriorityAction {
     
     // Cached dependency info from isAvailable() for use in getText()
     private String cachedGroupId;
@@ -32,40 +35,10 @@ public class UpgradeInQuickFixIntentionAction implements IntentionAction, Priori
 
     @Override
     public @IntentionName @NotNull String getText() {
-        // Return dynamic text based on cached dependency info
-        if (cachedGroupId != null) {
-            // Use a friendly display name for known dependencies
-            String displayName = getDisplayName(cachedGroupId, cachedArtifactId);
-            return displayName;
+        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+            return  SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME + AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN;
         }
-        return DEFAULT_TEXT;
-    }
-    
-    /**
-     * Gets a friendly display name for a dependency.
-     */
-    private String getDisplayName(String groupId, String artifactId) {
-        return "Scan and Resolve CVEs by Copilot";
-//        if (groupId == null) {
-//            return "Dependency";
-//        }
-//
-//        // Map known groupIds to friendly names
-//        if (groupId.equals("org.springframework.boot")) {
-//            return "Upgrade Spring Boot with Copilot";
-//        } else if (groupId.equals("org.springframework.security")) {
-//            return "Upgrade Spring Security with Copilot";
-//        } else if (groupId.equals("org.springframework")) {
-//            return "Spring Framework";
-//        } else if (groupId.startsWith("org.springframework")) {
-//            return "Spring " + (artifactId != null ? artifactId : "dependency");
-//        }
-//
-//        // For other dependencies, use groupId:artifactId or just groupId
-//        if (artifactId != null) {
-//            return groupId + ":" + artifactId;
-//        }
-//        return groupId;
+        return SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME;
     }
 
     @Override
@@ -103,7 +76,11 @@ public class UpgradeInQuickFixIntentionAction implements IntentionAction, Priori
                 cachedArtifactId = extractXmlValue(dependencyBlock, "artifactId");
                 
                 // Only show if we have valid dependency info (not for parent/plugin sections)
-                return cachedGroupId != null && cachedArtifactId != null;
+                if(cachedGroupId != null && cachedArtifactId != null) {
+                    //if the artifact is in the cached cve issues, show the intention
+                    final var issue = JavaUpgradeIssuesCache.getInstance(project).findCveIssue(cachedGroupId + ":" + cachedArtifactId);
+                    return issue != null;
+                }
             }
         } catch (Exception e) {
             // Ignore and return false
@@ -127,38 +104,7 @@ public class UpgradeInQuickFixIntentionAction implements IntentionAction, Priori
      * Builds a prompt based on the current editor context.
      */
     private String buildPromptFromContext(@NotNull Editor editor, @NotNull PsiFile file) {
-//        try {
-//            final int offset = editor.getCaretModel().getOffset();
-//            final String documentText = editor.getDocument().getText();
-//
-//            // Find the dependency block around the cursor
-//            final int dependencyStart = findDependencyStart(documentText, offset);
-//            final int dependencyEnd = findDependencyEnd(documentText, offset);
-//
-//            if (dependencyStart >= 0 && dependencyEnd > dependencyStart) {
-//                final String dependencyBlock = documentText.substring(dependencyStart, dependencyEnd);
-//
-//                // Extract groupId and artifactId
-//                final String groupId = extractXmlValue(dependencyBlock, "groupId");
-//                final String artifactId = extractXmlValue(dependencyBlock, "artifactId");
-//                final String version = extractXmlValue(dependencyBlock, "version");
-//
-//                if (groupId != null && artifactId != null) {
-//                    final StringBuilder prompt = new StringBuilder();
-//                    prompt.append("Fix security vulnerabilities in ");
-//                    prompt.append(groupId).append(":").append(artifactId);
-//                    if (version != null) {
-//                        prompt.append(":").append(version);
-//                    }
-//                    prompt.append(" by using #validate_cves_for_java");
-//                    return prompt.toString();
-//                }
-//            }
-//        } catch (Exception e) {
-//            // Fall back to generic prompt
-//        }
-        
-        return "run CVE scan for this project using java upgrade tools by invoking #validate_cves_for_java";
+        return SCAN_AND_RESOLVE_CVES_PROMPT;
     }
 
     /**

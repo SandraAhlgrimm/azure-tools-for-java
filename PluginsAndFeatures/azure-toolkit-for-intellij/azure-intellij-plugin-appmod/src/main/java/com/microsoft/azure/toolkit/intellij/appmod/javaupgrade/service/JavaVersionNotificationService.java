@@ -21,6 +21,7 @@ import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.installPlugin;
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.isAppModPluginInstalled;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService.*;
 import java.lang.reflect.Method;
 
@@ -44,8 +45,7 @@ public class JavaVersionNotificationService {
     private static final String DEFERRED_UNTIL_KEY = "azure.toolkit.java.version.deferred_until";
     private static final long DEFER_INTERVAL_MS = 10 * 24 * 60 * 60 * 1000L; // 10 days in milliseconds
     private static final String DEFAULT_MODEL_NAME = "Claude Sonnet 4.5";
-    // GitHub Copilot app modernization plugin ID
-    private static final String COPILOT_APPMOD_PLUGIN_ID = "com.github.copilot.appmod";
+
     // GitHub Copilot plugin ID
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
     
@@ -94,38 +94,35 @@ public class JavaVersionNotificationService {
     private void showNotification(@Nonnull Project project, 
                                    @Nonnull JavaUpgradeIssue issue) {
         final NotificationType notificationType = getNotificationType(issue.getSeverity());
-        
+
         final Notification notification = new Notification(
-            NOTIFICATION_GROUP_ID,
-            issue.getTitle(),
-            formatMessage(issue),
-            notificationType
+                NOTIFICATION_GROUP_ID,
+                issue.getTitle(),
+                formatMessage(issue),
+                notificationType
         );
-        
-        // Add upgrade action based on whether GitHub Copilot app modernization plugin is installed
-        if (isUpgradeSupported(issue)) {
-            if (isAppModPluginInstalled()) {
-                // Plugin is installed - show "Upgrade" action
-                notification.addAction(new NotificationAction("Upgrade") {
-                    @Override
-                    public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
-                        openCopilotChatWithUpgradePrompt(project, issue);
-                        notification.expire();
-                    }
-                });
-            } else {
-                // Plugin is not installed - show "Install and Upgrade" action
-                notification.addAction(new NotificationAction("Install and Upgrade") {
-                    @Override
-                    public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
-                       // installCopilotAppModPluginAndUpgrade(project, issue);
-                        installPlugin(project);
-                        notification.expire();
-                    }
-                });
-            }
+
+        if (isAppModPluginInstalled()) {
+            // Plugin is installed - show "Upgrade" action
+            notification.addAction(new NotificationAction("Upgrade") {
+                @Override
+                public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                    openCopilotChatWithUpgradePrompt(project, issue);
+                    notification.expire();
+                }
+            });
+        } else {
+            // Plugin is not installed - show "Install and Upgrade" action
+            notification.addAction(new NotificationAction("Install and Upgrade") {
+                @Override
+                public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                    installPlugin(project);
+                    notification.expire();
+                }
+            });
         }
-        
+
+
         // Add "Not Now" action - defers the notification for 10 days
         notification.addAction(new NotificationAction("Not Now") {
             @Override
@@ -271,22 +268,6 @@ public class JavaVersionNotificationService {
         // Upgrade support for JDK and Spring Boot
         return issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.JRE_TOO_OLD ||
                issue.getPackageId().startsWith(GROUP_ID_SPRING_BOOT + ":");
-    }
-    
-//    /**
-//     * Checks if the GitHub Copilot app modernization plugin is installed.
-//     * @return true if the plugin is installed, false otherwise
-//     */
-//    private boolean isCopilotAppModPluginInstalled() {
-//        return PluginManagerCore.isPluginInstalled(PluginId.getId(COPILOT_APPMOD_PLUGIN_ID));
-//    }
-    
-    /**
-     * Checks if the GitHub Copilot plugin is installed.
-     * @return true if the plugin is installed, false otherwise
-     */
-    private boolean isCopilotPluginInstalled() {
-        return PluginManagerCore.isPluginInstalled(PluginId.getId(COPILOT_PLUGIN_ID));
     }
     
     /**
@@ -487,42 +468,13 @@ public class JavaVersionNotificationService {
      */
     private String buildUpgradePrompt(@Nonnull JavaUpgradeIssue issue) {
         if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.JRE_TOO_OLD) {
-            return String.format("upgrade java runtime to Java %s (LTS) using java upgrade tools by invoking #generate_upgrade_plan", MATURE_JAVA_LTS_VERSION);
-        } else if (issue.getPackageId().startsWith(GROUP_ID_SPRING_BOOT + ":")) {
-            return String.format("upgrade java framework dependencies of this project to latest LTS version using java upgrade tools by invoking #generate_upgrade_plan");
+            return UPGRADE_JAVA_VERSION_PROMPT;
+        } else if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.CVE){
+            return SCAN_AND_RESOLVE_CVES_PROMPT;
+        }else if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.DEPRECATED || issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.END_OF_LIFE) {
+            return UPGRADE_JAVA_FRAMEWORK_PROMPT;
         }
-        return "upgrade java framework dependencies of this project to latest LTS version using java upgrade tools by invoking #generate_upgrade_plan";
-    }
-    
-    /**
-     * Installs the GitHub Copilot app modernization plugin and then opens Copilot chat.
-     * @param project The project context
-     * @param issue The upgrade issue to address
-     */
-    private void installCopilotAppModPluginAndUpgrade(@Nonnull Project project, @Nonnull JavaUpgradeIssue issue) {
-//        final Set<String> pluginIds = new HashSet<>();
-//        pluginIds.add(COPILOT_APPMOD_PLUGIN_ID);
-//
-//        AzureTaskManager.getInstance().runLater(() -> {
-//            PluginsAdvertiser.installAndEnablePlugins(pluginIds, () -> {
-//                PluginInstaller.addStateListener(new PluginStateListener() {
-//                    @Override
-//                    public void install(@NotNull IdeaPluginDescriptor descriptor) {
-//                        if (COPILOT_APPMOD_PLUGIN_ID.equals(descriptor.getPluginId().getIdString())) {
-//                            // Plugin installed successfully, now open Copilot chat
-//                            ApplicationManager.getApplication().invokeLater(() -> {
-//                                openCopilotChatWithUpgradePrompt(project, issue);
-//                            });
-//                        }
-//                    }
-//
-//                    @Override
-//                    public void uninstall(@NotNull IdeaPluginDescriptor descriptor) {
-//                        // Not needed
-//                    }
-//                });
-//            });
-//        });
+        return UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
     }
     
     /**

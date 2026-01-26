@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  */
 
-package com.microsoft.azure.toolkit.intellij.appmod;
+package com.microsoft.azure.toolkit.intellij.appmod.javamigration;
 
 import lombok.Getter;
 import lombok.Setter;

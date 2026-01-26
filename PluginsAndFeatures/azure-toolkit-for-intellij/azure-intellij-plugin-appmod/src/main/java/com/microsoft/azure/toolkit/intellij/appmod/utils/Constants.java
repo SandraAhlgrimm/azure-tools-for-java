@@ -1,4 +1,4 @@
-package com.microsoft.azure.toolkit.intellij.appmod;
+package com.microsoft.azure.toolkit.intellij.appmod.utils;
 
 public class Constants {
 

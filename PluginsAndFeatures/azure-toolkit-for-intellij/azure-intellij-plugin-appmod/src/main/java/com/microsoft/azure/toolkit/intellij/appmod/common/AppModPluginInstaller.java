@@ -11,7 +11,7 @@ import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginsAdvertiser;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
-import com.microsoft.azure.toolkit.intellij.appmod.AppModUtils;
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 
 import javax.annotation.Nonnull;
 import java.util.LinkedHashSet;

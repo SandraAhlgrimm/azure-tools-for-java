@@ -1,7 +1,7 @@
 <idea-plugin>
     <extensionPoints>
         <extensionPoint qualifiedName="com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider" 
-                        interface="com.microsoft.azure.toolkit.intellij.appmod.IMigrateOptionProvider"/>
+                        interface="com.microsoft.azure.toolkit.intellij.appmod.javamigration.IMigrateOptionProvider"/>
     </extensionPoints>
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.JavaUpgradeCheckStartupActivity"/>
@@ -30,7 +30,7 @@
     </extensions>
     <actions>
         <!-- Unified ActionGroup: handles all states (not installed, no options, has options) -->
-        <group class="com.microsoft.azure.toolkit.intellij.appmod.MigrateToAzureAction" 
+        <group class="com.microsoft.azure.toolkit.intellij.appmod.javamigration.MigrateToAzureAction"
                id="Actions.MigrateToAzure"
                text="Migrate to Azure" description="Migrate application to Azure" icon="/icons/appmod.svg"/>
         <action id="AzureToolkit.UpgradeInProblemsViewAction"

@@ -9,6 +9,7 @@ import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginsAdvertiser;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
@@ -77,7 +78,6 @@ public class AppModPluginInstaller {
     
     /**
      * Shows a confirmation dialog for plugin installation.
-     * Uses a modal dialog similar to AzdNode's ConfirmAndRunDialog.
      * 
      * @param project The current project
      * @param onConfirm Callback to execute when user confirms installation
@@ -93,10 +93,9 @@ public class AppModPluginInstaller {
             ? "Install this plugin to automate migrating your apps to Azure with Copilot."
             : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
         
-        new InstallPluginDialog(project, title)
-            .setLabel(message)
-            .setOnOkAction(onConfirm)
-            .show();
+        if (Messages.showOkCancelDialog(project, message, title, "Install", "Cancel", Messages.getQuestionIcon()) == Messages.OK) {
+            onConfirm.run();
+        }
     }
     
     /**

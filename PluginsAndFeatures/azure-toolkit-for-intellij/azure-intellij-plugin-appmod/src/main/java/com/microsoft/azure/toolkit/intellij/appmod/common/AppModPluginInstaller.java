@@ -98,6 +98,21 @@ public class AppModPluginInstaller {
         }
     }
     
+    public static void showAppModInstallationConfirmation(@Nonnull Project project) {
+        final boolean copilotInstalled = isCopilotInstalled();
+        
+        final String title = copilotInstalled 
+            ? "Install Github Copilot app modernization"
+            : "Install GitHub Copilot and app modernization";
+        
+        final String message = copilotInstalled
+            ? "Install this plugin to upgrade your apps with Copilot."
+            : "To upgrade your apps, you'll need two plugins: GitHub Copilot and app modernization.";
+        
+        if (Messages.showOkCancelDialog(project, message, title, "Install", "Cancel", Messages.getQuestionIcon()) == Messages.OK) {
+            installPlugin(project);
+        }
+    }
     /**
      * Installs the App Modernization plugin.
      * IntelliJ platform will automatically install Copilot as a dependency if AppMod declares it.

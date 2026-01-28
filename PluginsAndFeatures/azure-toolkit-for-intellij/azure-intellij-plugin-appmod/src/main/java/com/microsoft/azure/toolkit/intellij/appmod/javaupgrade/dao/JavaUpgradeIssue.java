@@ -121,13 +121,16 @@ public class JavaUpgradeIssue {
      */
     @Nullable
     private String cveId;
+
+    @Nullable
+    private String eofDate;
     
     /**
      * Gets a formatted title for the notification.
      */
     public String getTitle() {
         return switch (upgradeReason) {
-            case JRE_TOO_OLD -> "Outdated JDK Version Detected";
+            case JRE_TOO_OLD -> "Outdated JDK Detected";
             case END_OF_LIFE -> packageDisplayName + " End of Life";
             case DEPRECATED -> packageDisplayName + " Deprecated";
             case CVE -> "Security Vulnerability in " + packageDisplayName;

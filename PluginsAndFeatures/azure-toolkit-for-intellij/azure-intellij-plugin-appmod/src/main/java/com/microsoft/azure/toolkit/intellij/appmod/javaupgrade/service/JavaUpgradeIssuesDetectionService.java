@@ -24,7 +24,11 @@ import org.jetbrains.plugins.gradle.model.UnresolvedExternalDependency;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.ISSUE_DISPLAY_NAME;
 
 /**
  * Service to detect JDK version and framework dependency versions in Java projects.
@@ -52,6 +56,7 @@ public class JavaUpgradeIssuesDetectionService {
     
     // Package ID constants (used for cache lookups)
     public static final String PACKAGE_ID_JDK = "jdk";
+    public static final String JDK_DISPLAY_NAME = "JDK";
     
     /**
      * Metadata for dependencies to scan.
@@ -190,6 +195,12 @@ public class JavaUpgradeIssuesDetectionService {
     
     private static JavaUpgradeIssuesDetectionService instance;
     
+    /** Formatter for parsing EOL dates in "yyyy-MM" format */
+    private static final DateTimeFormatter EOL_DATE_PARSER = DateTimeFormatter.ofPattern("yyyy-MM");
+    
+    /** Formatter for displaying EOL dates in "MMMM yyyy" format (e.g., "June 2020") */
+    private static final DateTimeFormatter EOL_DATE_DISPLAY = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
+    
     private JavaUpgradeIssuesDetectionService() {
     }
     
@@ -198,6 +209,24 @@ public class JavaUpgradeIssuesDetectionService {
             instance = new JavaUpgradeIssuesDetectionService();
         }
         return instance;
+    }
+    
+    /**
+     * Formats an EOL date from "yyyy-MM" format to "Month yyyy" format.
+     * For example, "2020-06" becomes "June 2020".
+     * 
+     * @param eofDate The EOL date string in "yyyy-MM" format (e.g., "2020-06")
+     * @return The formatted date string (e.g., "June 2020"), or the original string if parsing fails
+     */
+    @Nonnull
+    public static String formatEofDate(@Nonnull String eofDate) {
+        try {
+            YearMonth yearMonth = YearMonth.parse(eofDate, EOL_DATE_PARSER);
+            return yearMonth.format(EOL_DATE_DISPLAY);
+        } catch (Exception e) {
+            // If parsing fails, return the original string
+            return eofDate;
+        }
     }
     
     /**
@@ -222,15 +251,14 @@ public class JavaUpgradeIssuesDetectionService {
             // Check against MATURE_JAVA_LTS_VERSION (21)
             if (jdkVersion < MATURE_JAVA_LTS_VERSION) {
                 issues.add(JavaUpgradeIssue.builder()
-                    .packageId("jdk")
-                    .packageDisplayName("JDK")
+                    .packageId(PACKAGE_ID_JDK)
+                    .packageDisplayName(JDK_DISPLAY_NAME)
                     .upgradeReason(JavaUpgradeIssue.UpgradeReason.JRE_TOO_OLD)
                     .severity(JavaUpgradeIssue.Severity.WARNING)
                     .currentVersion(String.valueOf(jdkVersion))
                     .supportedVersion(">=" + MATURE_JAVA_LTS_VERSION)
                     .suggestedVersion(String.valueOf(MATURE_JAVA_LTS_VERSION))
-                    .message(String.format("This project is using an older Java runtime (%d). Would you like to upgrade it to %d (LTS)?",
-                        jdkVersion, MATURE_JAVA_LTS_VERSION))
+                    .message(String.format(ISSUE_DISPLAY_NAME, JDK_DISPLAY_NAME, jdkVersion, JDK_DISPLAY_NAME, MATURE_JAVA_LTS_VERSION))
                     .learnMoreUrl(JDK_LEARN_MORE_URL)
                     .build());
             }
@@ -390,6 +418,7 @@ public class JavaUpgradeIssuesDetectionService {
                 .suggestedVersion(checkItem.suggestedVersion)
                 .message(buildUpgradeMessage(checkItem.displayName, version, checkItem))
                 .learnMoreUrl(checkItem.learnMoreUrl)
+                    .eofDate(checkItem.getEolDateForVersion(version))
                 .build();
         }
         
@@ -546,27 +575,10 @@ public class JavaUpgradeIssuesDetectionService {
     private String buildUpgradeMessage(@Nonnull String displayName, 
                                         @Nonnull String currentVersion,
                                         @Nonnull DependencyCheckItem checkItem) {
-        String eolDateStr = getEolDateString(currentVersion, checkItem);
-        boolean isEol = isVersionEndOfLife(currentVersion, checkItem);
-        if (isEol && eolDateStr != null) {
-            return String.format(
-                "This project is using %s %s, which has reached end of life in %s. " +
-                "Would you like to upgrade it to %s?",
-                displayName, currentVersion, eolDateStr, checkItem.suggestedVersion
-            );
-        } else if (eolDateStr != null) {
-            return String.format(
-                "This project is using %s %s, which will reach end of life in %s. " +
-                "Would you like to upgrade it to %s?",
-                displayName, currentVersion, eolDateStr, checkItem.suggestedVersion
-            );
-        } else {
-            return String.format(
-                "This project is using %s %s, which is outside the supported version range (%s). " +
-                "Would you like to upgrade it to %s?",
-                displayName, currentVersion, checkItem.supportedVersion, checkItem.suggestedVersion
-            );
-        }
+        return String.format(
+                ISSUE_DISPLAY_NAME,
+                displayName, currentVersion, displayName, checkItem.suggestedVersion
+        );
     }
     
     /**
@@ -633,6 +645,7 @@ public class JavaUpgradeIssuesDetectionService {
                 .suggestedVersion(checkItem.suggestedVersion)
                 .message(buildUpgradeMessage(checkItem.displayName, version, checkItem))
                 .learnMoreUrl(checkItem.learnMoreUrl)
+                    .eofDate(checkItem.getEolDateForVersion(version))
                 .build();
         }
         

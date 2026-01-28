@@ -12,7 +12,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService.PACKAGE_ID_JDK;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.UPGRADE_JAVA_FRAMEWORK_PROMPT;
 
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
@@ -54,19 +54,9 @@ public class JavaUpgradeQuickFix implements LocalQuickFix {
     }
 
     private String buildPromptForIssue(@NotNull JavaUpgradeIssue issue) {
-        String packageId = issue.getPackageId();
 
-        // JDK upgrade
-        if (PACKAGE_ID_JDK.equals(packageId)) {
-            return String.format(
-                "Upgrade Java runtime from version %s to Java %s (LTS) using java upgrade tools by invoking #generate_upgrade_plan",
-                issue.getCurrentVersion(), issue.getSuggestedVersion()
-            );
-        }
-
-        // Framework upgrade (Spring Boot, Spring Framework, etc.)
         return String.format(
-            "Upgrade %s from version %s to %s using java upgrade tools by invoking #generate_upgrade_plan",
+            UPGRADE_JAVA_FRAMEWORK_PROMPT,
             issue.getPackageDisplayName(), issue.getCurrentVersion(), issue.getSuggestedVersion()
         );
     }

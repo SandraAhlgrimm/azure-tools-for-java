@@ -19,8 +19,7 @@ import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 
-import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.installPlugin;
-import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.isAppModPluginInstalled;
+import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.*;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService.*;
 import java.lang.reflect.Method;
@@ -94,10 +93,15 @@ public class JavaVersionNotificationService {
     private void showNotification(@Nonnull Project project, 
                                    @Nonnull JavaUpgradeIssue issue) {
         final NotificationType notificationType = getNotificationType(issue.getSeverity());
-
+        String title = issue.getTitle();
+        if (issue.getEofDate() != null){
+            //change 2020-06 to June 2020
+            String formattedDate = formatEofDate(issue.getEofDate());
+            title = String.format("%s (%s)", title, formattedDate);
+        }
         final Notification notification = new Notification(
                 NOTIFICATION_GROUP_ID,
-                issue.getTitle(),
+                title,
                 formatMessage(issue),
                 notificationType
         );
@@ -116,7 +120,7 @@ public class JavaVersionNotificationService {
             notification.addAction(new NotificationAction("Install and Upgrade") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
-                    installPlugin(project);
+                    showAppModInstallationConfirmation(project);
                     notification.expire();
                 }
             });
@@ -151,13 +155,18 @@ public class JavaVersionNotificationService {
     private String formatMessage(@Nonnull JavaUpgradeIssue issue) {
         final StringBuilder sb = new StringBuilder();
         sb.append("<html>");
-        sb.append(issue.getMessage());
-        
-        if (issue.getCurrentVersion() != null && issue.getSuggestedVersion() != null) {
-            sb.append("<br/><br/>");
-            sb.append("<b>Current:</b> ").append(issue.getCurrentVersion());
-            sb.append(" → <b>Suggested:</b> ").append(issue.getSuggestedVersion());
+        if (isAppModPluginInstalled()){
+            sb.append(issue.getMessage());
+        } else {
+            sb.append(issue.getMessage() + TO_INSTALL_APP_MODE_PLUGIN);
         }
+        sb.append(".");
+        
+//        if (issue.getCurrentVersion() != null && issue.getSuggestedVersion() != null) {
+//            sb.append("<br/><br/>");
+//            sb.append("<b>Current:</b> ").append(issue.getCurrentVersion());
+//            sb.append(" → <b>Suggested:</b> ").append(issue.getSuggestedVersion());
+//        }
         
         sb.append("</html>");
         return sb.toString();
@@ -290,24 +299,21 @@ public class JavaVersionNotificationService {
         AzureTaskManager.getInstance().runLater(() -> {
             if (!isAppModPluginInstalled()) {
                // showGenericUpgradeGuidance(project, prompt);
-                installPlugin(project);
+                showAppModInstallationConfirmation(project);
                 return;
             }
             
             // Try direct API call first (works when plugin versions match)
             if (tryDirectCopilotCall(project, prompt)) {
-                System.out.println("Direct Copilot call succeeded.");
                 return; // Success, no need for reflection
             }
             
             // Fallback to reflection for cross-version compatibility
             if (tryReflectionCopilotCall(project, prompt)) {
-                System.out.println("Reflection Copilot call succeeded.");
                 return; // Success via reflection
             }
             
             // Both approaches failed
-            System.out.println("Both direct and reflection Copilot calls failed.");
             showGenericUpgradeGuidance(project, prompt);
         });
     }
@@ -328,7 +334,6 @@ public class JavaVersionNotificationService {
                     builder.withSessionIdReceiver(sessionId -> null);
                     return null;
                 });
-                System.out.println("Direct Copilot call succeeded.");
                 return true;
             }
         } catch (Error | Exception e) {
@@ -467,14 +472,10 @@ public class JavaVersionNotificationService {
      * @return The prompt string for Copilot
      */
     private String buildUpgradePrompt(@Nonnull JavaUpgradeIssue issue) {
-        if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.JRE_TOO_OLD) {
-            return UPGRADE_JAVA_VERSION_PROMPT;
-        } else if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.CVE){
-            return SCAN_AND_RESOLVE_CVES_PROMPT;
-        }else if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.DEPRECATED || issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.END_OF_LIFE) {
-            return UPGRADE_JAVA_FRAMEWORK_PROMPT;
+        if (issue.getUpgradeReason() == JavaUpgradeIssue.UpgradeReason.CVE){
+            return String.format(FIX_VULNERABLE_DEPENDENCY_WITH_COPILOT_PROMPT, issue.getPackageId());
         }
-        return UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
+        return String.format(UPGRADE_JAVA_FRAMEWORK_PROMPT, issue.getPackageDisplayName(), issue.getCurrentVersion(), issue.getSuggestedVersion());
     }
     
     /**

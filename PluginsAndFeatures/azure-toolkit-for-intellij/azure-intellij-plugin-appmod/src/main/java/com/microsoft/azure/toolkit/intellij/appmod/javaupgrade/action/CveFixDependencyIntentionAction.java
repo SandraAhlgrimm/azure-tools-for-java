@@ -14,13 +14,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
 import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
+import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.VulnerabilityInfo;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
 import org.jetbrains.annotations.NotNull;
 
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.SCAN_AND_RESOLVE_CVES_PROMPT;
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
 
 /**
  * Intention action to fix CVE vulnerabilities in dependencies using GitHub Copilot.
@@ -29,18 +29,17 @@ import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.S
  * 
  * Implements HighPriorityAction to appear at the top of the quick-fix list.
  */
-public class CveFixIntentionAction implements IntentionAction, HighPriorityAction {
+public class CveFixDependencyIntentionAction implements IntentionAction, HighPriorityAction {
     
     // Cached dependency info from isAvailable() for use in getText()
-    private String cachedGroupId;
-    private String cachedArtifactId;
+    private VulnerabilityInfo vulnerabilityInfo;
 
     @Override
     public @IntentionName @NotNull String getText() {
         if (!AppModPluginInstaller.isAppModPluginInstalled()) {
-            return  SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME + AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN;
+            return  FIX_VULNERABLE_DEPENDENCY_WITH_COPILOT_DISPLAY_NAME + AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN;
         }
-        return SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME;
+        return FIX_VULNERABLE_DEPENDENCY_WITH_COPILOT_DISPLAY_NAME;
     }
 
     @Override
@@ -51,8 +50,7 @@ public class CveFixIntentionAction implements IntentionAction, HighPriorityActio
     @Override
     public boolean isAvailable(@NotNull Project project, Editor editor, PsiFile file) {
         // Reset cached values
-        cachedGroupId = null;
-        cachedArtifactId = null;
+        vulnerabilityInfo = null;
         
         if (file == null || editor == null) {
             return false;
@@ -74,9 +72,10 @@ public class CveFixIntentionAction implements IntentionAction, HighPriorityActio
             
             if (dependencyStart >= 0 && dependencyEnd > dependencyStart) {
                 final String dependencyBlock = documentText.substring(dependencyStart, dependencyEnd);
-                cachedGroupId = extractXmlValue(dependencyBlock, "groupId");
-                cachedArtifactId = extractXmlValue(dependencyBlock, "artifactId");
-                
+                String cachedGroupId = extractXmlValue(dependencyBlock, "groupId");
+                String cachedArtifactId = extractXmlValue(dependencyBlock, "artifactId");
+                String cachedVersion = extractXmlValue(dependencyBlock, "version");
+                vulnerabilityInfo = VulnerabilityInfo.builder().groupId(cachedGroupId).artifactId(cachedArtifactId).version(cachedVersion).build();
                 // Only show if we have valid dependency info (not for parent/plugin sections)
                 if(cachedGroupId != null && cachedArtifactId != null) {
                     //if the artifact is in the cached cve issues, show the intention
@@ -106,7 +105,8 @@ public class CveFixIntentionAction implements IntentionAction, HighPriorityActio
      * Builds a prompt based on the current editor context.
      */
     private String buildPromptFromContext(@NotNull Editor editor, @NotNull PsiFile file) {
-        return SCAN_AND_RESOLVE_CVES_PROMPT;
+        return String.format(FIX_VULNERABLE_DEPENDENCY_WITH_COPILOT_PROMPT,
+                vulnerabilityInfo.getDependencyCoordinate());
     }
 
     /**

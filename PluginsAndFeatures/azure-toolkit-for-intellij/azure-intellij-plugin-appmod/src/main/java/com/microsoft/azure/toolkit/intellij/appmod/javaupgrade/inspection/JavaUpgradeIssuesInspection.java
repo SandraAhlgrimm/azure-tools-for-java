@@ -95,7 +95,7 @@ public class JavaUpgradeIssuesInspection extends LocalInspectionTool {
         holder.registerProblem(
             tag,
             issue.getMessage(),
-            ProblemHighlightType.WARNING,
+            ProblemHighlightType.WEAK_WARNING,
             new JavaUpgradeQuickFix(issue)
         );
     }

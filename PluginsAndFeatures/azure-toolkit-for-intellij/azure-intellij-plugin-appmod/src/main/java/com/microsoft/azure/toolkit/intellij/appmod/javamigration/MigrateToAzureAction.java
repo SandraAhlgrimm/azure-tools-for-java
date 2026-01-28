@@ -86,7 +86,7 @@ public class MigrateToAzureAction extends ActionGroup {
             .collect(Collectors.toList());
         
         if (nodes.isEmpty()) {
-            AppModUtils.logTelemetryEvent("action.no-options");
+            AppModUtils.logTelemetryEvent("action.no-tasks");
         }
         
         return new MigrationState(

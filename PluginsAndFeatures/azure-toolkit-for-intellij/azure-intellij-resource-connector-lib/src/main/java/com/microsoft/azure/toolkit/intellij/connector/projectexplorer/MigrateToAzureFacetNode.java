@@ -73,7 +73,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
         if (nodes.isEmpty()) {
-            AppModUtils.logTelemetryEvent("facet.no-options");
+            AppModUtils.logTelemetryEvent("facet.no-tasks");
         }
         return nodes;
     }

@@ -108,7 +108,7 @@ public final class MigrateToAzureNode extends Node<String> {
             .filter(MigrateNodeData::isVisible)
             .collect(Collectors.toList());
         if (nodes.isEmpty()) {
-            AppModUtils.logTelemetryEvent("node.no-options");
+            AppModUtils.logTelemetryEvent("node.no-tasks");
         }
         return nodes;
     }

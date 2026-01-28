@@ -202,7 +202,7 @@ public class MigrateToAzureAction extends ActionGroup {
                 
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e) {
-                    AppModUtils.logTelemetryEvent("action.click-option", Map.of("label", nodeData.getLabel()));
+                    AppModUtils.logTelemetryEvent("action.click-task", Map.of("label", nodeData.getLabel()));
                     nodeData.click(e);
                 }
             };

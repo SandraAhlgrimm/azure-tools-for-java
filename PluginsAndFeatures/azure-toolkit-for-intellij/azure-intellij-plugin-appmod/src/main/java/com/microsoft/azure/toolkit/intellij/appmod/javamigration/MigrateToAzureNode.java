@@ -157,7 +157,7 @@ public final class MigrateToAzureNode extends Node<String> {
         // Set click handler
         if (data.hasClickHandler()) {
             node.onClicked(d -> {
-                AppModUtils.logTelemetryEvent("node.click-option", Map.of("label", data.getLabel()));
+                AppModUtils.logTelemetryEvent("node.click-task", Map.of("label", data.getLabel()));
                 data.click(null);
             });
         }

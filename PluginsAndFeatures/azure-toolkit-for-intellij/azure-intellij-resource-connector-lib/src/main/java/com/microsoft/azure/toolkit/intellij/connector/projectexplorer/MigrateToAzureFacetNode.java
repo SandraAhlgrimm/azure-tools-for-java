@@ -212,7 +212,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         @Override
         public void navigate(boolean requestFocus) {
             // Trigger click handler
-            AppModUtils.logTelemetryEvent("facet.click-option", java.util.Map.of("label", nodeData.getLabel()));
+            AppModUtils.logTelemetryEvent("facet.click-task", java.util.Map.of("label", nodeData.getLabel()));
             nodeData.doubleClick(null);
         }
 

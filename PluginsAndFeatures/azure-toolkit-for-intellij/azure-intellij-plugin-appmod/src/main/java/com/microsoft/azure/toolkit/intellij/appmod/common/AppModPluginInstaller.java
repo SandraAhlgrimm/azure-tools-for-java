@@ -110,7 +110,10 @@ public class AppModPluginInstaller {
             : "To upgrade your apps, you'll need two plugins: GitHub Copilot and app modernization.";
         
         if (Messages.showOkCancelDialog(project, message, title, "Install", "Cancel", Messages.getQuestionIcon()) == Messages.OK) {
+            AppModUtils.logTelemetryEvent("plugin.install-upgrade-confirmed");
             installPlugin(project);
+        } else {
+            AppModUtils.logTelemetryEvent("plugin.install-upgrade-cancelled");
         }
     }
     /**

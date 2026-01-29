@@ -13,6 +13,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.VulnerabilityInfo;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,7 +57,7 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
                     vulnerabilityInfo.getDependencyCoordinate())
         );
         }
-
+        AppModUtils.logTelemetryEvent("openCopilotChatForCveFixDependencyInProblemsViewAction");
     }
 
     @Override

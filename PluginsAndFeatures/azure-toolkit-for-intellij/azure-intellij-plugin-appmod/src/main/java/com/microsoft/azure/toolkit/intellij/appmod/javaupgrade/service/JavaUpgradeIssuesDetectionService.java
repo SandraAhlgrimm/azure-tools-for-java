@@ -5,9 +5,9 @@
 
 package com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service;
 
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import com.microsoft.azure.toolkit.intellij.common.utils.JdkUtils;
 import com.microsoft.intellij.util.GradleUtils;
 import com.microsoft.intellij.util.MavenUtils;
@@ -239,6 +239,7 @@ public class JavaUpgradeIssuesDetectionService {
         
         try {
             final Integer jdkVersion = JdkUtils.getJdkLanguageLevel(project);
+            AppModUtils.logTelemetryEvent("getJavaVersion", Map.of("jdkVersion", String.valueOf(jdkVersion)));
             if (jdkVersion == null) {
                 return issues;
             }

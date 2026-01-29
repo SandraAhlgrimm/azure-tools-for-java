@@ -13,6 +13,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import org.jetbrains.annotations.NotNull;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN;
@@ -68,6 +69,7 @@ public class JavaUpgradeContextMenuAction extends AnAction {
         
         // Open Copilot chat with the upgrade prompt
         JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
+        AppModUtils.logTelemetryEvent("openJavaUpgradeCopilotChatFromContextMenu");
     }
 
     /**

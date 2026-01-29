@@ -17,6 +17,7 @@ import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.*;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import com.github.copilot.api.CopilotChatService;
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -105,23 +107,25 @@ public class JavaVersionNotificationService {
                 formatMessage(issue),
                 notificationType
         );
-
+        String issueStr = issue.toString();
         if (isAppModPluginInstalled()) {
             // Plugin is installed - show "Upgrade" action
+            AppModUtils.logTelemetryEvent("showNotification.install.appmod", Map.of("javaupgrade.issue", issueStr));
             notification.addAction(new NotificationAction("Upgrade") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
                     openCopilotChatWithUpgradePrompt(project, issue);
-                    notification.expire();
+               //     notification.expire();
                 }
             });
         } else {
             // Plugin is not installed - show "Install and Upgrade" action
+            AppModUtils.logTelemetryEvent("showNotification.upgrade", Map.of("javaupgrade.issue", issueStr));
             notification.addAction(new NotificationAction("Install and Upgrade") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
                     showAppModInstallationConfirmation(project);
-                    notification.expire();
+                //    notification.expire();
                 }
             });
         }

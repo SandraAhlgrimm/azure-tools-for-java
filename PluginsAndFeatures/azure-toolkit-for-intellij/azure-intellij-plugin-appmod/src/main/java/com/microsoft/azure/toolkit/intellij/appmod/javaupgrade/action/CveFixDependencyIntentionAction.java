@@ -18,6 +18,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.Vulnerability
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import org.jetbrains.annotations.NotNull;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
@@ -99,6 +100,7 @@ public class CveFixDependencyIntentionAction implements IntentionAction, HighPri
         // Try to extract dependency information from the current context
         final String prompt = buildPromptFromContext(editor, file);
         JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
+        AppModUtils.logTelemetryEvent("openCveFixDependencyCopilotChatFromIntentionAction");
     }
 
     /**

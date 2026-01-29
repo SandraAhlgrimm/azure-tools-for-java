@@ -142,7 +142,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             // Plugin not installed - trigger install on double-click
             AppModUtils.logTelemetryEvent("facet.click-install");
-            AppModPluginInstaller.showInstallConfirmation(getProject(),
+            AppModPluginInstaller.showInstallConfirmation(getProject(), false,
                 () -> AppModPluginInstaller.installPlugin(getProject()));
         } else if (!hasMigrationOptions()) {
             // No migration options - open App Modernization Panel

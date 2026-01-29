@@ -11,7 +11,6 @@ import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginsAdvertiser;
-import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 
 import javax.annotation.Nonnull;
@@ -80,39 +79,33 @@ public class AppModPluginInstaller {
      * Shows a confirmation dialog for plugin installation.
      * 
      * @param project The current project
-     * @param onConfirm Callback to execute when user confirms installation
+     * @param forUpgrade true for "upgrade" scenario, false for "migrate to Azure" scenario
+     * @param onConfirm Callback to execute when user confirms installation (if null, calls installPlugin directly)
      */
-    public static void showInstallConfirmation(@Nonnull Project project, @Nonnull Runnable onConfirm) {
+    public static void showInstallConfirmation(@Nonnull Project project, boolean forUpgrade, @Nonnull Runnable onConfirm) {
         final boolean copilotInstalled = isCopilotInstalled();
         
         final String title = copilotInstalled 
             ? "Install Github Copilot app modernization"
             : "Install GitHub Copilot and app modernization";
         
-        final String message = copilotInstalled
-            ? "Install this plugin to automate migrating your apps to Azure with Copilot."
-            : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
+        final String message;
+        if (copilotInstalled) {
+            message = forUpgrade 
+                ? "Install this plugin to upgrade your apps with Copilot."
+                : "Install this plugin to automate migrating your apps to Azure with Copilot.";
+        } else {
+            message = forUpgrade
+                ? "To upgrade your apps, you'll need two plugins: GitHub Copilot and app modernization."
+                : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
+        }
         
         if (Messages.showOkCancelDialog(project, message, title, "Install", "Cancel", Messages.getQuestionIcon()) == Messages.OK) {
             onConfirm.run();
         }
     }
     
-    public static void showAppModInstallationConfirmation(@Nonnull Project project) {
-        final boolean copilotInstalled = isCopilotInstalled();
-        
-        final String title = copilotInstalled 
-            ? "Install Github Copilot app modernization"
-            : "Install GitHub Copilot and app modernization";
-        
-        final String message = copilotInstalled
-            ? "Install this plugin to upgrade your apps with Copilot."
-            : "To upgrade your apps, you'll need two plugins: GitHub Copilot and app modernization.";
-        
-        if (Messages.showOkCancelDialog(project, message, title, "Install", "Cancel", Messages.getQuestionIcon()) == Messages.OK) {
-            installPlugin(project);
-        }
-    }
+
     /**
      * Installs the App Modernization plugin.
      * IntelliJ platform will automatically install Copilot as a dependency if AppMod declares it.
@@ -120,32 +113,22 @@ public class AppModPluginInstaller {
      * @param project The current project
      */
     public static void installPlugin(@Nonnull Project project) {
-        final boolean appModInstalled = isAppModPluginInstalled();
-        
-        // If already installed, nothing to do
-        if (appModInstalled) {
+        if (isAppModPluginInstalled()) {
             AppModUtils.logTelemetryEvent("plugin.install-skipped", Map.of("reason", "already-installed"));
             return;
         }
         
         // Only pass AppMod ID - IntelliJ will automatically install Copilot as dependency
-        // (AppMod's plugin.xml should declare <depends>com.github.copilot</depends>)
         final Set<PluginId> pluginsToInstall = new LinkedHashSet<>();
         pluginsToInstall.add(PluginId.getId(PLUGIN_ID));
         
-        // Use PluginsAdvertiser.installAndEnable - IntelliJ handles the rest
-        // The platform will show plugin selection dialog, download, install, and prompt for restart
-        AzureTaskManager.getInstance().runAndWait(() -> {
-            PluginsAdvertiser.installAndEnable(
-                project,
-                pluginsToInstall,
-                true,   // showDialog
-                true,   // selectAllInDialog - pre-select all plugins
-                null,   // modalityState
-                () -> {
-                    AppModUtils.logTelemetryEvent("plugin.install-complete");
-                }
-            );
-        });
+        PluginsAdvertiser.installAndEnable(
+            project,
+            pluginsToInstall,
+            true,   // showDialog
+            true,   // selectAllInDialog - pre-select all plugins
+            null,   // modalityState
+            () -> AppModUtils.logTelemetryEvent("plugin.install-complete")
+        );
     }
 }

@@ -144,7 +144,7 @@ public class MigrateToAzureAction extends ActionGroup {
         switch (migrationState.state) {
             case NOT_INSTALLED:
                 AppModUtils.logTelemetryEvent("action.click-install");
-                AppModPluginInstaller.showInstallConfirmation(project,
+                AppModPluginInstaller.showInstallConfirmation(project, false,
                     () -> AppModPluginInstaller.installPlugin(project));
                 break;
             case NO_OPTIONS:

@@ -93,7 +93,7 @@ public final class MigrateToAzureNode extends Node<String> {
         
         onClicked(e -> {
             AppModUtils.logTelemetryEvent("node.click-install");
-            AppModPluginInstaller.showInstallConfirmation(project, () -> AppModPluginInstaller.installPlugin(project));
+            AppModPluginInstaller.showInstallConfirmation(project, false, () -> AppModPluginInstaller.installPlugin(project));
         });
     }
     

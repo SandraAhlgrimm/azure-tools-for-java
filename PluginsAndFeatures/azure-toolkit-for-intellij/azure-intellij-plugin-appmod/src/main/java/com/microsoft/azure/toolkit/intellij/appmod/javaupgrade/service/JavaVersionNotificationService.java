@@ -16,6 +16,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
+import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 
@@ -120,7 +121,7 @@ public class JavaVersionNotificationService {
             notification.addAction(new NotificationAction("Install and Upgrade") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
-                    showAppModInstallationConfirmation(project);
+                    AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project));
                     notification.expire();
                 }
             });
@@ -299,7 +300,7 @@ public class JavaVersionNotificationService {
         AzureTaskManager.getInstance().runLater(() -> {
             if (!isAppModPluginInstalled()) {
                // showGenericUpgradeGuidance(project, prompt);
-                showAppModInstallationConfirmation(project);
+                AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project));
                 return;
             }
             

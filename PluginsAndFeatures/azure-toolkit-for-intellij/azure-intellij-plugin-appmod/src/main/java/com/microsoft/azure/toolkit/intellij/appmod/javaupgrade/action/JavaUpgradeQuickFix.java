@@ -14,6 +14,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersi
 
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.UPGRADE_JAVA_FRAMEWORK_PROMPT;
 
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 
@@ -51,6 +52,7 @@ public class JavaUpgradeQuickFix implements LocalQuickFix {
     public void applyFix(@NotNull Project project, @NotNull ProblemDescriptor descriptor) {
         String prompt = buildPromptForIssue(issue);
         JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
+        AppModUtils.logTelemetryEvent("openCopilotChatForJavaUpgradeQuickFix");
     }
 
     private String buildPromptForIssue(@NotNull JavaUpgradeIssue issue) {

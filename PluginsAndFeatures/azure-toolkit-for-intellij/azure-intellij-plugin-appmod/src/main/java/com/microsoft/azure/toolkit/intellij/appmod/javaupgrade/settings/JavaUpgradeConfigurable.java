@@ -10,12 +10,14 @@ import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.util.NlsContexts;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * Settings page for Java Upgrade feature.
@@ -133,6 +135,7 @@ public class JavaUpgradeConfigurable implements Configurable {
         }
         final JavaVersionNotificationService service = JavaVersionNotificationService.getInstance();
         service.setNotificationsEnabled(enableNotificationsCheckBox.isSelected());
+        AppModUtils.logTelemetryEvent("applyJavaUpgradeNotificationSettings", Map.of("notificationsEnabled", String.valueOf(enableNotificationsCheckBox.isSelected())));
     }
 
     @Override
@@ -143,6 +146,7 @@ public class JavaUpgradeConfigurable implements Configurable {
         final JavaVersionNotificationService service = JavaVersionNotificationService.getInstance();
         enableNotificationsCheckBox.setSelected(service.isNotificationsEnabled());
         updateDeferralStatusLabel();
+        AppModUtils.logTelemetryEvent("resetJavaUpgradeNotificationDeferralSettings");
     }
 
     @Override

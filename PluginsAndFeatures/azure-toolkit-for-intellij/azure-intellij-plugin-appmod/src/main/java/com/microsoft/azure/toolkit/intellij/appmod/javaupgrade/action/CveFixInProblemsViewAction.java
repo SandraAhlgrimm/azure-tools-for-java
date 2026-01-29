@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
@@ -42,6 +43,7 @@ public class CveFixInProblemsViewAction extends AnAction implements DumbAware {
                 project,
                 SCAN_AND_RESOLVE_CVES_PROMPT
         );
+        AppModUtils.logTelemetryEvent("openCopilotChatForCveFixInProblemsViewAction");
     }
 
     @Override

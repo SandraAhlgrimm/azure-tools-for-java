@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 
+import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -88,6 +89,7 @@ public class UpgradeActionRegistrar implements ProjectActivity {
         if (!containsAction(group, UPGRADE_ACTION_ID, actionManager)) {
             // Add a separator before the upgrade action to visually group it
             group.add(Separator.create());
+            AppModUtils.logTelemetryEvent("java-upgrade.contextmenu.action.registered");
             group.add(upgradeAction);
         }
     }

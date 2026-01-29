@@ -84,14 +84,21 @@ public class AppModPluginInstaller {
      */
     public static void showInstallConfirmation(@Nonnull Project project, boolean forUpgrade, @Nonnull Runnable onConfirm) {
         final boolean copilotInstalled = isCopilotInstalled();
-        
-        final String title = copilotInstalled 
-            ? "Install Github Copilot app modernization"
-            : "Install GitHub Copilot and app modernization";
-        
-        final String message = copilotInstalled
-            ? "Install this plugin to automate migrating your apps to Azure with Copilot."
-            : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
+
+        final String title = copilotInstalled
+                ? "Install Github Copilot app modernization"
+                : "Install GitHub Copilot and app modernization";
+
+        final String message;
+        if (copilotInstalled) {
+            message = forUpgrade
+                    ? "Install this plugin to upgrade your apps with Copilot."
+                    : "Install this plugin to automate migrating your apps to Azure with Copilot.";
+        } else {
+            message = forUpgrade
+                    ? "To upgrade your apps, you'll need two plugins: GitHub Copilot and app modernization."
+                    : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
+        }
 
         final String action = forUpgrade ? "upgrade" : "migration";
         

@@ -408,7 +408,7 @@ public class JavaUpgradeIssuesDetectionService {
         checkedPackages.add(checkItem.getPackageId());
         
         // Check if version satisfies the supported version range
-        if (!satisfiesVersionRange(version, checkItem.supportedVersion)) {
+        if (!satisfiesVersionRange(version, checkItem.supportedVersion) && isEOF(version, checkItem)) {
             return JavaUpgradeIssue.builder()
                 .packageId(checkItem.getPackageId())
                 .packageDisplayName(checkItem.displayName)
@@ -425,7 +425,21 @@ public class JavaUpgradeIssuesDetectionService {
         
         return null;
     }
-    
+
+    private boolean isEOF(String version, DependencyCheckItem checkItem) {
+        String eolDateStr = checkItem.getEolDateForVersion(version);
+        if (eolDateStr == null) {
+            return false;
+        }
+        try {
+            YearMonth eolDate = YearMonth.parse(eolDateStr, EOL_DATE_PARSER);
+            YearMonth currentDate = YearMonth.now();
+            return currentDate.isAfter(eolDate);
+        } catch (Exception e) {
+            return false;
+        }
+
+    }
     /**
      * Gets the version from parent POM.
      */
@@ -470,13 +484,7 @@ public class JavaUpgradeIssuesDetectionService {
      */
     private boolean satisfiesSingleCondition(@Nonnull String version, @Nonnull String condition) {
         try {
-            // Handle "x.y.z" pattern (e.g., "2.7.x" means any 2.7.*)
-            if (condition.endsWith(".x")) {
-                final String prefix = condition.substring(0, condition.length() - 2);
-                return version.startsWith(prefix + ".");
-            }
-            
-            // Handle ">=" pattern
+            // Handle ">=" pattern (check before ".x" pattern to handle ">=3.2.x" correctly)
             if (condition.startsWith(">=")) {
                 String minVersion = condition.substring(2).trim();
                 // Handle version with wildcard, e.g. ">=3.2.x" -> "3.2"
@@ -488,7 +496,7 @@ public class JavaUpgradeIssuesDetectionService {
                 return current.compareTo(min) >= 0;
             }
             
-            // Handle ">" pattern
+            // Handle ">" pattern (check before ".x" pattern to handle ">3.2.x" correctly)
             if (condition.startsWith(">")) {
                 String minVersion = condition.substring(1).trim();
                 // Handle version with wildcard, e.g. ">3.2.x" -> "3.2"
@@ -498,6 +506,12 @@ public class JavaUpgradeIssuesDetectionService {
                 final ComparableVersion current = new ComparableVersion(version);
                 final ComparableVersion min = new ComparableVersion(minVersion);
                 return current.compareTo(min) > 0;
+            }
+            
+            // Handle "x.y.x" pattern (e.g., "2.7.x" means any 2.7.*)
+            if (condition.endsWith(".x")) {
+                final String prefix = condition.substring(0, condition.length() - 2);
+                return version.startsWith(prefix + ".");
             }
             
             // Handle exact version match

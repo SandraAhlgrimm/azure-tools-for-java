@@ -125,7 +125,7 @@ public class JavaVersionNotificationService {
             notification.addAction(new NotificationAction("Install and Upgrade") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
-                    AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project));
+                    AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project, true));
                     // notification.expire();
                 }
             });
@@ -304,7 +304,7 @@ public class JavaVersionNotificationService {
         AzureTaskManager.getInstance().runLater(() -> {
             if (!isAppModPluginInstalled()) {
                // showGenericUpgradeGuidance(project, prompt);
-                AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project));
+                AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project, true));
                 return;
             }
             

@@ -116,10 +116,10 @@ public class AppModPluginInstaller {
      * IntelliJ platform will automatically install Copilot as a dependency if AppMod declares it.
      * 
      * @param project The current project
+     * @param forUpgrade true for "upgrade" scenario, false for "migrate to Azure" scenario
      */
-    public static void installPlugin(@Nonnull Project project) {
+    public static void installPlugin(@Nonnull Project project, boolean forUpgrade) {
         if (isAppModPluginInstalled()) {
-            AppModUtils.logTelemetryEvent("plugin.install-skipped", Map.of("reason", "already-installed"));
             return;
         }
         
@@ -127,13 +127,14 @@ public class AppModPluginInstaller {
         final Set<PluginId> pluginsToInstall = new LinkedHashSet<>();
         pluginsToInstall.add(PluginId.getId(PLUGIN_ID));
         
+        final String source = forUpgrade ? "upgrade" : "migration";
         PluginsAdvertiser.installAndEnable(
             project,
             pluginsToInstall,
             true,   // showDialog
             true,   // selectAllInDialog - pre-select all plugins
             null,   // modalityState
-            () -> AppModUtils.logTelemetryEvent("plugin.install-complete")
+            () -> AppModUtils.logTelemetryEvent("plugin." + source + ".install-complete")
         );
     }
 }

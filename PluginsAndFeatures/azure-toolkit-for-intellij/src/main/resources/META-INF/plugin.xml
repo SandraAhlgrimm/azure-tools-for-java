@@ -2,7 +2,7 @@
              xmlns:xi="http://www.w3.org/2001/XInclude">
   <id>com.microsoft.tooling.msservices.intellij.azure</id>
   <name>Azure Toolkit for IntelliJ</name>
-  <version>3.96.3</version>
+  <version>3.97.0</version>
   <vendor email="java@microsoft.com" url="http://www.microsoft.com">Microsoft</vendor>
 
   <description><![CDATA[
@@ -28,10 +28,18 @@
   <change-notes>
     <![CDATA[
     <html>
-      <h2 id="3-96-3">3.96.3</h2>
+      <h2 id="3-97-0">3.97.0</h2>
+      <h3 id="added">Added</h3>
       <ul>
-      <li>Support IntelliJ 2025.3 EAP.</li>
-      <li>Update the Azure MCP server name from releases list.</li>
+      <li>Integrate GitHub Copilot app modernization with &quot;Migrate to Azure&quot; entry points<ul>
+      <li>New &quot;Migrate to Azure&quot; node under Azure root node in Service Explorer</li>
+      <li>New &quot;Migrate to Azure&quot; action in project/module right-click context menu</li>
+      <li>New &quot;Migrate to Azure&quot; node under Azure facet in Project Explorer</li>
+      <li>Auto-detection and installation prompt for GitHub Copilot app modernization plugin</li>
+      </ul>
+      </li>
+      <li>Detect outdated Java/framework and suggest upgrades with &quot;GitHub Copilot app modernization&quot;</li>
+      <li>Detect CVEs in Java project dependencies and suggest upgrades with &quot;GitHub Copilot app modernization&quot;</li>
       </ul>
       <p>You may get the full change log <a href="https://github.com/Microsoft/azure-tools-for-java/blob/develop/CHANGELOG.md">here</a></p>
     </html>

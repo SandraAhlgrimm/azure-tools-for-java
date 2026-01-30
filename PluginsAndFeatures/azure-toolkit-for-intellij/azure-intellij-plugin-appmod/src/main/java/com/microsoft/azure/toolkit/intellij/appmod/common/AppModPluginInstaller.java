@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginsAdvertiser;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nonnull;
 import java.util.LinkedHashSet;
@@ -23,6 +24,7 @@ import java.util.Set;
  * This centralizes all plugin detection and installation logic to avoid code duplication
  * between MigrateToAzureNode and MigrateToAzureAction.
  */
+@Slf4j
 public class AppModPluginInstaller {
     private static final String PLUGIN_ID = "com.github.copilot.appmod";
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
@@ -38,8 +40,11 @@ public class AppModPluginInstaller {
         try {
             final PluginId pluginId = PluginId.getId(PLUGIN_ID);
             final IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(pluginId);
-            return plugin != null && plugin.isEnabled();
+            final boolean result = plugin != null && plugin.isEnabled();
+            log.debug("[AppModPluginInstaller] isAppModPluginInstalled: {}", result);
+            return result;
         } catch (Exception e) {
+            log.error("[AppModPluginInstaller] Failed to check AppMod plugin status", e);
             return false;
         }
     }
@@ -51,8 +56,11 @@ public class AppModPluginInstaller {
         try {
             final PluginId pluginId = PluginId.getId(COPILOT_PLUGIN_ID);
             final IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(pluginId);
-            return plugin != null && plugin.isEnabled();
+            final boolean result = plugin != null && plugin.isEnabled();
+            log.debug("[AppModPluginInstaller] isCopilotInstalled: {}", result);
+            return result;
         } catch (Exception e) {
+            log.error("[AppModPluginInstaller] Failed to check Copilot plugin status", e);
             return false;
         }
     }
@@ -67,10 +75,12 @@ public class AppModPluginInstaller {
             final IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(azureToolkitId);
             if (descriptor != null) {
                 final String path = descriptor.getPluginPath().toString();
-                return path.contains("build") || path.contains("sandbox") || path.contains("out");
+                final boolean result = path.contains("build") || path.contains("sandbox") || path.contains("out");
+                log.debug("[AppModPluginInstaller] isRunningInDevMode: {}, path: {}", result, path);
+                return result;
             }
         } catch (Exception ex) {
-            // If we can't determine, assume production mode (safer)
+            log.error("[AppModPluginInstaller] Failed to check dev mode status", ex);
         }
         return false;
     }
@@ -84,6 +94,8 @@ public class AppModPluginInstaller {
      */
     public static void showInstallConfirmation(@Nonnull Project project, boolean forUpgrade, @Nonnull Runnable onConfirm) {
         final boolean copilotInstalled = isCopilotInstalled();
+        final String action = forUpgrade ? "upgrade" : "migration";
+        log.debug("[AppModPluginInstaller] showInstallConfirmation - forUpgrade: {}, copilotInstalled: {}", forUpgrade, copilotInstalled);
 
         final String title = copilotInstalled
                 ? "Install Github Copilot app modernization"
@@ -99,13 +111,13 @@ public class AppModPluginInstaller {
                     ? "To upgrade your apps, you'll need two plugins: GitHub Copilot and app modernization."
                     : "To migrate to Azure, you'll need two plugins: GitHub Copilot and app modernization.";
         }
-
-        final String action = forUpgrade ? "upgrade" : "migration";
         
         if (Messages.showOkCancelDialog(project, message, title, "Install", "Cancel", Messages.getQuestionIcon()) == Messages.OK) {
+            log.info("[AppModPluginInstaller] User confirmed plugin installation for {}", action);
             AppModUtils.logTelemetryEvent("plugin." + action + ".install-confirmed");
             onConfirm.run();
         } else {
+            log.info("[AppModPluginInstaller] User cancelled plugin installation for {}", action);
             AppModUtils.logTelemetryEvent("plugin." + action + ".install-cancelled");
         }
     }
@@ -119,7 +131,9 @@ public class AppModPluginInstaller {
      * @param forUpgrade true for "upgrade" scenario, false for "migrate to Azure" scenario
      */
     public static void installPlugin(@Nonnull Project project, boolean forUpgrade) {
+        log.debug("[AppModPluginInstaller] installPlugin - forUpgrade: {}", forUpgrade);
         if (isAppModPluginInstalled()) {
+            log.debug("[AppModPluginInstaller] installPlugin - skipping, already installed");
             return;
         }
         
@@ -128,13 +142,17 @@ public class AppModPluginInstaller {
         pluginsToInstall.add(PluginId.getId(PLUGIN_ID));
         
         final String source = forUpgrade ? "upgrade" : "migration";
+        log.info("[AppModPluginInstaller] Starting plugin installation via PluginsAdvertiser");
         PluginsAdvertiser.installAndEnable(
             project,
             pluginsToInstall,
             true,   // showDialog
             true,   // selectAllInDialog - pre-select all plugins
             null,   // modalityState
-            () -> AppModUtils.logTelemetryEvent("plugin." + source + ".install-complete")
+            () -> {
+                log.info("[AppModPluginInstaller] Plugin installation completed");
+                AppModUtils.logTelemetryEvent("plugin." + source + ".install-complete");
+            }
         );
     }
 }

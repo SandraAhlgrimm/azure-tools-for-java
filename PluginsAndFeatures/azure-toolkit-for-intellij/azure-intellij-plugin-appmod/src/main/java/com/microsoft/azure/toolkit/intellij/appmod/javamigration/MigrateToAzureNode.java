@@ -7,6 +7,7 @@ package com.microsoft.azure.toolkit.intellij.appmod.javamigration;
 
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
+import lombok.extern.slf4j.Slf4j;
 import com.microsoft.azure.toolkit.ide.common.component.Node;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcon;
 import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
  * 
  * State is computed on initialization and can be refreshed via refresh() method.
  */
+@Slf4j
 public final class MigrateToAzureNode extends Node<String> {
     private static final ExtensionPointName<IMigrateOptionProvider> childProviders =
         ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
@@ -40,6 +42,7 @@ public final class MigrateToAzureNode extends Node<String> {
     public MigrateToAzureNode(Project project) {
         super("Migrate to Azure");
         this.project = project;
+        log.debug("[MigrateToAzureNode] Creating node for project: {}", project.getName());
         withIcon(APP_MOD_ICON);
         
         // Add refresh action to context menu (only once in constructor)
@@ -58,6 +61,7 @@ public final class MigrateToAzureNode extends Node<String> {
     }
 
     public void initializeNode() {
+        log.debug("[MigrateToAzureNode] initializeNode - appModInstalled: {}", AppModPluginInstaller.isAppModPluginInstalled());
         // Clear previous state
         clearClickHandlers();
         withDescription("");
@@ -74,6 +78,7 @@ public final class MigrateToAzureNode extends Node<String> {
      * Called by RefreshMigrateToAzureAction from context menu.
      */
     public void refresh() {
+        log.debug("[MigrateToAzureNode] refresh called");
         AppModUtils.logTelemetryEvent("node.refresh");
         refreshChildren();  // This rebuilds children from addChildren function
     }
@@ -84,6 +89,7 @@ public final class MigrateToAzureNode extends Node<String> {
 
     private void showNotInstalled() {
         final boolean copilotInstalled = AppModPluginInstaller.isCopilotInstalled();
+        log.debug("[MigrateToAzureNode] showNotInstalled - copilotInstalled: {}", copilotInstalled);
         
         // Dynamic description based on what needs to be installed
         final String description = copilotInstalled 
@@ -92,6 +98,7 @@ public final class MigrateToAzureNode extends Node<String> {
         withDescription(description);
         
         onClicked(e -> {
+            log.info("[MigrateToAzureNode] Install click triggered");
             AppModUtils.logTelemetryEvent("node.click-install");
             AppModPluginInstaller.showInstallConfirmation(project, false, () -> AppModPluginInstaller.installPlugin(project, false));
         });
@@ -101,16 +108,22 @@ public final class MigrateToAzureNode extends Node<String> {
      * Load migration options from extension points.
      */
     private List<MigrateNodeData> loadMigrationNodeData() {
-        final List<MigrateNodeData> nodes = childProviders.getExtensionList().stream()
-            .filter(provider -> provider.isApplicable(project))
-            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
-            .flatMap(provider -> provider.createNodeData(project).stream())
-            .filter(MigrateNodeData::isVisible)
-            .collect(Collectors.toList());
-        if (nodes.isEmpty()) {
-            AppModUtils.logTelemetryEvent("node.no-tasks");
+        log.debug("[MigrateToAzureNode] loadMigrationNodeData - loading extension points");
+        try {
+            final List<MigrateNodeData> nodes = childProviders.getExtensionList().stream()
+                .filter(provider -> provider.isApplicable(project))
+                .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
+                .flatMap(provider -> provider.createNodeData(project).stream())
+                .filter(MigrateNodeData::isVisible)
+                .collect(Collectors.toList());
+            if (nodes.isEmpty()) {
+                AppModUtils.logTelemetryEvent("node.no-tasks");
+            }
+            return nodes;
+        } catch (Exception e) {
+            log.error("[MigrateToAzureNode] Failed to load migration node data", e);
+            return List.of();
         }
-        return nodes;
     }
     
     /**
@@ -118,26 +131,36 @@ public final class MigrateToAzureNode extends Node<String> {
      * Also updates description and click handler based on data.
      */
     private List<Node<?>> buildChildNodes() {
-        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+        log.debug("[MigrateToAzureNode] buildChildNodes - appModInstalled: {}", AppModPluginInstaller.isAppModPluginInstalled());
+        try {
+            if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+                log.debug("[MigrateToAzureNode] buildChildNodes - returning empty (plugin not installed)");
+                return List.of();
+            }
+            
+            final List<MigrateNodeData> nodeDataList = loadMigrationNodeData();
+            log.debug("[MigrateToAzureNode] buildChildNodes - loaded {} nodes", nodeDataList.size());
+            
+            // Update description and click handler based on data
+            clearClickHandlers();
+            if (nodeDataList.isEmpty()) {
+                log.debug("[MigrateToAzureNode] buildChildNodes - no migration options, setting click to open panel");
+                withDescription("Open GitHub Copilot app modernization");
+                onClicked(e -> {
+                    log.info("[MigrateToAzureNode] Opening AppMod panel (no options)");
+                    AppModPanelHelper.openAppModPanel(project, "node");
+                });
+            } else {
+                withDescription("");
+            }
+            
+            return nodeDataList.stream()
+                .map(this::convertToNode)
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("[MigrateToAzureNode] Failed to build child nodes", e);
             return List.of();
         }
-        
-        final List<MigrateNodeData> nodeDataList = loadMigrationNodeData();
-        
-        // Update description and click handler based on data
-        clearClickHandlers();
-        if (nodeDataList.isEmpty()) {
-            withDescription("Open GitHub Copilot app modernization");
-            onClicked(e -> {
-                AppModPanelHelper.openAppModPanel(project, "node");
-            });
-        } else {
-            withDescription("");
-        }
-        
-        return nodeDataList.stream()
-            .map(this::convertToNode)
-            .collect(Collectors.toList());
     }
     
     /**

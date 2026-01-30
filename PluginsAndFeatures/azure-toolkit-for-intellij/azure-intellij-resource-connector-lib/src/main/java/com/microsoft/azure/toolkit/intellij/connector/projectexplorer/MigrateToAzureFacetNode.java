@@ -22,6 +22,7 @@ import com.microsoft.azure.toolkit.ide.common.icon.AzureIcons;
 import com.microsoft.azure.toolkit.lib.common.action.Action;
 import com.microsoft.azure.toolkit.lib.common.action.ActionGroup;
 import com.microsoft.azure.toolkit.lib.common.action.IActionGroup;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
  * 
  * State is computed on initialization and refreshed when buildChildren() is called (via tree refresh).
  */
+@Slf4j
 public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule> {
     private static final ExtensionPointName<IMigrateOptionProvider> migrationProviders =
         ExtensionPointName.create("com.microsoft.tooling.msservices.intellij.azure.migrateOptionProvider");
@@ -46,6 +48,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
     
     public MigrateToAzureFacetNode(Project project, AzureModule module) {
         super(project, module);
+        log.debug("[MigrateToAzureFacetNode] Creating node for project: {}", project.getName());
         // Don't compute in constructor - use lazy loading
     }
     
@@ -54,6 +57,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
      */
     private List<MigrateNodeData> getMigrationNodes() {
         if (migrationNodes == null) {
+            log.debug("[MigrateToAzureFacetNode] getMigrationNodes - computing (first access)");
             migrationNodes = computeMigrationNodes();
         }
         return migrationNodes;
@@ -63,32 +67,49 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
      * Computes migration nodes from extension point providers.
      */
     private List<MigrateNodeData> computeMigrationNodes() {
-        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+        log.debug("[MigrateToAzureFacetNode] computeMigrationNodes - appModInstalled: {}", AppModPluginInstaller.isAppModPluginInstalled());
+        try {
+            if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+                return List.of();
+            }
+            final List<MigrateNodeData> nodes = migrationProviders.getExtensionList().stream()
+                .filter(provider -> provider.isApplicable(getProject()))
+                .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
+                .flatMap(provider -> provider.createNodeData(getProject()).stream())
+                .filter(MigrateNodeData::isVisible)
+                .collect(Collectors.toList());
+            log.debug("[MigrateToAzureFacetNode] computeMigrationNodes - loaded {} nodes", nodes.size());
+            if (nodes.isEmpty()) {
+                AppModUtils.logTelemetryEvent("facet.no-tasks");
+            }
+            return nodes;
+        } catch (Exception e) {
+            log.error("[MigrateToAzureFacetNode] Failed to compute migration nodes", e);
             return List.of();
         }
-        final List<MigrateNodeData> nodes = migrationProviders.getExtensionList().stream()
-            .filter(provider -> provider.isApplicable(getProject()))
-            .sorted(Comparator.comparingInt(IMigrateOptionProvider::getPriority))
-            .flatMap(provider -> provider.createNodeData(getProject()).stream())
-            .filter(MigrateNodeData::isVisible)
-            .collect(Collectors.toList());
-        if (nodes.isEmpty()) {
-            AppModUtils.logTelemetryEvent("facet.no-tasks");
-        }
-        return nodes;
     }
     
     /**
      * Checks if there are any visible migration options available.
+     * Only returns true if data has already been loaded (non-blocking).
      */
     private boolean hasMigrationOptions() {
-        return !getMigrationNodes().isEmpty();
+        // Only check cached data - don't trigger loading on UI thread
+        return migrationNodes != null && !migrationNodes.isEmpty();
+    }
+    
+    /**
+     * Checks if migration nodes have been loaded.
+     */
+    private boolean isMigrationNodesLoaded() {
+        return migrationNodes != null;
     }
     
     /**
      * Refreshes migration nodes and updates the tree view.
      */
     public void refresh() {
+        log.debug("[MigrateToAzureFacetNode] refresh called");
         migrationNodes = null;  // Clear cached data to force recompute
         updateChildren();  // This also refreshes the view
     }
@@ -129,31 +150,37 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
                 ? "Migrate to Azure (Install Github Copilot app modernization)"
                 : "Migrate to Azure (Install GitHub Copilot and app modernization)";
             presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
-        } else if (!hasMigrationOptions()) {
+        } else if (isMigrationNodesLoaded() && !hasMigrationOptions()) {
+            // Only show "Open..." if we've already loaded and found no options
             presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
             presentation.setLocationString("Open GitHub Copilot app modernization");
         } else {
+            // Default state or has options
             presentation.addText("Migrate to Azure", com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
         }
     }
 
     @Override
     public void navigate(boolean requestFocus) {
+        log.debug("[MigrateToAzureFacetNode] navigate - appModInstalled: {}, hasMigrationOptions: {}", 
+            AppModPluginInstaller.isAppModPluginInstalled(), hasMigrationOptions());
         if (!AppModPluginInstaller.isAppModPluginInstalled()) {
             // Plugin not installed - trigger install on double-click
+            log.info("[MigrateToAzureFacetNode] Install click triggered");
             AppModUtils.logTelemetryEvent("facet.click-install");
             AppModPluginInstaller.showInstallConfirmation(getProject(), false,
                 () -> AppModPluginInstaller.installPlugin(getProject(), false));
-        } else if (!hasMigrationOptions()) {
+        } else if (isMigrationNodesLoaded() && !hasMigrationOptions()) {
             // No migration options - open App Modernization Panel
+            log.info("[MigrateToAzureFacetNode] Opening AppMod panel (no options)");
             AppModPanelHelper.openAppModPanel(getProject(), "facet");
         }
     }
 
     @Override
     public boolean canNavigate() {
-        // Enable navigation when plugin is not installed OR when no migration options
-        return !AppModPluginInstaller.isAppModPluginInstalled() || !hasMigrationOptions();
+        // Enable navigation when plugin is not installed OR when loaded and no migration options
+        return !AppModPluginInstaller.isAppModPluginInstalled() || (isMigrationNodesLoaded() && !hasMigrationOptions());
     }
 
     @Override

@@ -6,6 +6,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.JavaUpgradeCheckStartupActivity"/>
         <postStartupActivity implementation="com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.action.UpgradeActionRegistrar"/>
+        <postStartupActivity implementation="com.microsoft.azure.toolkit.intellij.appmod.javamigration.MigrationStatePreloader"/>
         <notificationGroup id="Azure Toolkit - Java Version Check" displayType="BALLOON" isLogByDefault="true"/>
         <intentionAction>
             <language>XML</language>

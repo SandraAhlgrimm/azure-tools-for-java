@@ -14,21 +14,18 @@ import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.Vulnerability
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.*;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.VulnerabilityInfo.parseVulnerabilityDescription;
 
 /**
  * Action to fix vulnerable dependencies by opening GitHub Copilot chat with an upgrade prompt.
  * This action appears in the Problems View context menu for vulnerable dependency issues.
  */
+@Slf4j
 public class CveFixDependencyInProblemsViewAction extends AnAction implements DumbAware {
 
     private static final String CVE_MARKER = "CVE-";
@@ -41,57 +38,67 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        final Project project = e.getData(CommonDataKeys.PROJECT);
-        if (project == null || project.isDisposed()) {
-            return;
+        try {
+            final Project project = e.getData(CommonDataKeys.PROJECT);
+            if (project == null || project.isDisposed()) {
+                return;
+            }
+            if (vulnerabilityInfo == null) {
+                JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(
+                        project,
+                        SCAN_AND_RESOLVE_CVES_PROMPT
+                );
+            } else {
+                JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(
+                        project,
+                        String.format(FIX_VULNERABLE_DEPENDENCY_WITH_COPILOT_PROMPT,
+                                vulnerabilityInfo.getDependencyCoordinate())
+                );
+            }
+            AppModUtils.logTelemetryEvent("openCopilotChatForCveFixDependencyInProblemsViewAction");
+        } catch (Throwable ex) {
+            log.error("Failed to open Copilot chat for CVE fix", ex.getMessage());
         }
-        if (vulnerabilityInfo == null) {
-            JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(
-                project,
-                SCAN_AND_RESOLVE_CVES_PROMPT
-        );
-        } else {
-            JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(
-                project,
-                String.format(FIX_VULNERABLE_DEPENDENCY_WITH_COPILOT_PROMPT,
-                    vulnerabilityInfo.getDependencyCoordinate())
-        );
-        }
-        AppModUtils.logTelemetryEvent("openCopilotChatForCveFixDependencyInProblemsViewAction");
     }
 
     @Override
     public void update(@NotNull AnActionEvent e) {
-        final Project project = e.getData(CommonDataKeys.PROJECT);
-        if (project == null || project.isDisposed()) {
+        try {
+            final Project project = e.getData(CommonDataKeys.PROJECT);
+            if (project == null || project.isDisposed()) {
+                e.getPresentation().setEnabledAndVisible(false);
+                return;
+            }
+
+            // Check if we're in the Problems View context with a vulnerability
+            final String description = extractProblemDescription(e);
+            if (description == null) {
+                e.getPresentation().setEnabledAndVisible(false);
+                return;
+            }
+            vulnerabilityInfo = parseVulnerabilityDescription(description);
+            // Also check if the file is pom.xml or build.gradle (common for dependency issues)
+            final VirtualFile file = e.getData(CommonDataKeys.VIRTUAL_FILE);
+            final boolean isBuildFile = isBuildFile(file);
+
+            if (!isBuildFile || !isCVEIssue(description)) {
+                e.getPresentation().setEnabledAndVisible(false);
+                return;
+            }
+            final var issue = JavaUpgradeIssuesCache.getInstance(project).findCveIssue(vulnerabilityInfo.getGroupId() + ":" + vulnerabilityInfo.getArtifactId());
+            if (issue == null) {
+                e.getPresentation().setEnabledAndVisible(false);
+                return;
+            }
+            e.getPresentation().setEnabledAndVisible(true);
+            //  e.getPresentation().setText(SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME);
+            if (!AppModPluginInstaller.isAppModPluginInstalled()) {
+                e.getPresentation().setText(e.getPresentation().getText() + AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN);
+            }
+        } catch (Throwable ex) {
+            // In case of any error, hide the action
             e.getPresentation().setEnabledAndVisible(false);
-            return;
-        }
-        
-        // Check if we're in the Problems View context with a vulnerability
-        final String description = extractProblemDescription(e);
-        if (description == null) {
-            e.getPresentation().setEnabledAndVisible(false);
-            return;
-        }
-        vulnerabilityInfo = parseVulnerabilityDescription(description);
-        // Also check if the file is pom.xml or build.gradle (common for dependency issues)
-        final VirtualFile file = e.getData(CommonDataKeys.VIRTUAL_FILE);
-        final boolean isBuildFile = isBuildFile(file);
-        
-        if (!isBuildFile || !isCVEIssue(description)) {
-            e.getPresentation().setEnabledAndVisible(false);
-            return;
-        }
-        final var issue = JavaUpgradeIssuesCache.getInstance(project).findCveIssue(vulnerabilityInfo.getGroupId() + ":" + vulnerabilityInfo.getArtifactId());
-        if (issue == null){
-            e.getPresentation().setEnabledAndVisible(false);
-            return;
-        }
-        e.getPresentation().setEnabledAndVisible(true);
-      //  e.getPresentation().setText(SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME);
-        if (!AppModPluginInstaller.isAppModPluginInstalled()) {
-            e.getPresentation().setText(e.getPresentation().getText() + AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN);
+            log.error("Failed to update CVE fix action visibility, hide the action", ex);
         }
     }
 
@@ -137,10 +144,6 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
      */
     private boolean isCVEIssue(@NotNull String description) {
         // Pattern: CVE-YYYY-NNNNN
-        final int cveIndex = description.toUpperCase().indexOf(CVE_MARKER);
-        if (cveIndex >= 0) {
-            return true;
-        }
-        return false;
+        return description.toUpperCase().contains(CVE_MARKER);
     }
 }

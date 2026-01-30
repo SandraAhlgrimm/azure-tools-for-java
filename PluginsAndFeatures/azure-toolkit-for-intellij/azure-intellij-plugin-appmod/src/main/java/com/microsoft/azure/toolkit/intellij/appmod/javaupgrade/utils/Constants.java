@@ -1,8 +1,6 @@
-package com.microsoft.azure.toolkit.intellij.appmod.javaupgrade;
+package com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils;
 
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService.MATURE_JAVA_LTS_VERSION;
-
-public class Contants {
+public class Constants {
     public static final String UPGRADE_JAVA_AND_FRAMEWORK_PROMPT = "Upgrade java runtime and java framework dependencies of this project to the latest LTS version using java upgrade tools by invoking #generate_upgrade_plan";
     public static final String UPGRADE_JAVA_VERSION_PROMPT = "Upgrade Java runtime from version %s to Java %s (LTS) using java upgrade tools by invoking #generate_upgrade_plan";
     public static final String UPGRADE_JAVA_FRAMEWORK_PROMPT = "Upgrade %s from version %s to %s using java upgrade tools by invoking #generate_upgrade_plan";

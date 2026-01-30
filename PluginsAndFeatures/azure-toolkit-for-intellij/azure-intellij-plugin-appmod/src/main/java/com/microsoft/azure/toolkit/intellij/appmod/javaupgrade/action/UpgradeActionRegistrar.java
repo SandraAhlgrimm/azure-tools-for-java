@@ -17,6 +17,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
  * Registers the Upgrade action into the GitHub Copilot context menu at runtime.
  * This is needed because the Copilot plugin creates its context menu groups dynamically.
  */
+@Slf4j
 public class UpgradeActionRegistrar implements ProjectActivity {
 
     private static final String UPGRADE_ACTION_ID = "AzureToolkit.JavaUpgradeContextMenu";
@@ -32,13 +34,18 @@ public class UpgradeActionRegistrar implements ProjectActivity {
     @Nullable
     @Override
     public Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
-        discoverAndRegisterAction();
+        try{
+            discoverAndRegisterAction();
+        } catch (Throwable e) {
+            log.error("Failed to register Upgrade action in Copilot context menu.", e);
+        }
         return Unit.INSTANCE;
     }
 
     private void discoverAndRegisterAction() {
         // Only proceed if Copilot plugin is installed
         if (!AppModPluginInstaller.isCopilotInstalled()) {
+            log.info("GitHub Copilot plugin not installed; skipping UpgradeActionRegistrar.");
             return;
         }
 
@@ -91,6 +98,7 @@ public class UpgradeActionRegistrar implements ProjectActivity {
             group.add(Separator.create());
             AppModUtils.logTelemetryEvent("java-upgrade.contextmenu.action.registered");
             group.add(upgradeAction);
+            log.info("Registered Upgrade action into {}.", groupId);
         }
     }
 

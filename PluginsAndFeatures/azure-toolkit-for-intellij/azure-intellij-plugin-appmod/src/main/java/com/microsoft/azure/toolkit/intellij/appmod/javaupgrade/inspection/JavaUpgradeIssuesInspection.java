@@ -20,6 +20,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgra
 
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService.*;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.List;
  * Note: Issues are cached at project startup via JavaUpgradeIssueCache to avoid
  * repeated expensive scans during inspection runs.
  */
+@Slf4j
 public class JavaUpgradeIssuesInspection extends LocalInspectionTool {
 
     @NotNull
@@ -92,6 +94,7 @@ public class JavaUpgradeIssuesInspection extends LocalInspectionTool {
     }
 
     private void registerProblem(@NotNull ProblemsHolder holder, @NotNull XmlTag tag, @NotNull JavaUpgradeIssue issue) {
+        log.info("Registering Java upgrade issue in inspection: {}", issue);
         holder.registerProblem(
             tag,
             issue.getMessage(),

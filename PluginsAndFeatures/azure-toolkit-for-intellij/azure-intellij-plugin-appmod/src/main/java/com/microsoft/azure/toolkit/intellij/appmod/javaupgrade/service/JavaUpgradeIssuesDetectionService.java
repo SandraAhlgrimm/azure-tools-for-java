@@ -11,6 +11,7 @@ import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import com.microsoft.azure.toolkit.intellij.common.utils.JdkUtils;
 import com.microsoft.intellij.util.GradleUtils;
 import com.microsoft.intellij.util.MavenUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.jetbrains.idea.maven.model.MavenArtifact;
@@ -28,7 +29,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.ISSUE_DISPLAY_NAME;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.ISSUE_DISPLAY_NAME;
 
 /**
  * Service to detect JDK version and framework dependency versions in Java projects.
@@ -37,6 +38,7 @@ import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.I
  * This implementation is aligned with the TypeScript version in vscode-java-dependency.
  * @see <a href="https://github.com/microsoft/vscode-java-dependency/blob/main/src/upgrade/assessmentManager.ts">assessmentManager.ts</a>
  */
+@Slf4j
 public class JavaUpgradeIssuesDetectionService {
     
     /**
@@ -215,17 +217,18 @@ public class JavaUpgradeIssuesDetectionService {
      * Formats an EOL date from "yyyy-MM" format to "Month yyyy" format.
      * For example, "2020-06" becomes "June 2020".
      * 
-     * @param eofDate The EOL date string in "yyyy-MM" format (e.g., "2020-06")
+     * @param eolDate The EOL date string in "yyyy-MM" format (e.g., "2020-06")
      * @return The formatted date string (e.g., "June 2020"), or the original string if parsing fails
      */
     @Nonnull
-    public static String formatEofDate(@Nonnull String eofDate) {
+    public static String formatEolDate(@Nonnull String eolDate) {
         try {
-            YearMonth yearMonth = YearMonth.parse(eofDate, EOL_DATE_PARSER);
+            YearMonth yearMonth = YearMonth.parse(eolDate, EOL_DATE_PARSER);
             return yearMonth.format(EOL_DATE_DISPLAY);
         } catch (Exception e) {
             // If parsing fails, return the original string
-            return eofDate;
+            log.error("Error formatting EOL date '{}': {}", eolDate, e.getMessage());
+            return eolDate;
         }
     }
     
@@ -239,6 +242,7 @@ public class JavaUpgradeIssuesDetectionService {
         
         try {
             final Integer jdkVersion = JdkUtils.getJdkLanguageLevel(project);
+            log.info("Got JDK version: {}", jdkVersion);
             AppModUtils.logTelemetryEvent("getJavaVersion", Map.of("jdkVersion", String.valueOf(jdkVersion)));
             if (jdkVersion == null) {
                 return issues;
@@ -246,6 +250,8 @@ public class JavaUpgradeIssuesDetectionService {
             
             // Skip versions below 8 - out of scope
             if (jdkVersion < 8) {
+                AppModUtils.logTelemetryEvent("getJavaVersionSkipped", Map.of("jdkVersion", String.valueOf(jdkVersion)));
+                log.warn("JDK version below 8 detected ({}), skipping JDK upgrade check", jdkVersion);
                 return issues;
             }
             
@@ -265,6 +271,7 @@ public class JavaUpgradeIssuesDetectionService {
             }
         } catch (Exception e) {
             // Error checking JDK version
+            log.error("Error checking JDK version: {}", e.getMessage(), e);
         }
         
         return issues;
@@ -282,6 +289,7 @@ public class JavaUpgradeIssuesDetectionService {
             final Set<String> checkedPackages = new HashSet<>();
 
             if (MavenUtils.isMavenProject(project)) {
+                log.info("Checking Maven project dependencies for upgrade issues");
                 final MavenProjectsManager mavenProjectsManager = MavenProjectsManager.getInstanceIfCreated(project);
                 if (mavenProjectsManager != null && mavenProjectsManager.isMavenizedProject()) {
                     final List<MavenProject> mavenProjects = mavenProjectsManager.getProjects();
@@ -300,6 +308,7 @@ public class JavaUpgradeIssuesDetectionService {
                     }
                 }
             } else if (GradleUtils.isGradleProject(project)) {
+                log.info("Checking Gradle project dependencies for upgrade issues");
                 final List<ExternalProject> gradleProjects = GradleUtils.listGradleProjects(project);
                 for (ExternalProject gradleProject : gradleProjects) {
                     for (DependencyCheckItem checkItem : DEPENDENCIES_TO_SCAN) {
@@ -316,6 +325,7 @@ public class JavaUpgradeIssuesDetectionService {
             
         } catch (Exception e) {
             // Error checking dependencies
+            log.error("Error checking dependency issues: {}", e.getMessage(), e);
         }
         
         return issues;
@@ -334,6 +344,7 @@ public class JavaUpgradeIssuesDetectionService {
             final Set<String> coordinateSet = new HashSet<>();
 
             if (MavenUtils.isMavenProject(project)) {
+                log.info("Checking Maven project dependencies for CVE issues");
                 final MavenProjectsManager mavenProjectsManager = MavenProjectsManager.getInstanceIfCreated(project);
                 if (mavenProjectsManager != null && mavenProjectsManager.isMavenizedProject()) {
                     final List<MavenProject> mavenProjects = mavenProjectsManager.getProjects();
@@ -349,6 +360,7 @@ public class JavaUpgradeIssuesDetectionService {
                     }
                 }
             } else if (GradleUtils.isGradleProject(project)) {
+                log.info("Checking Gradle project dependencies for CVE issues");
                 final List<ExternalProject> gradleProjects = GradleUtils.listGradleProjects(project);
                 for (ExternalProject gradleProject : gradleProjects) {
                     final ExternalSourceSet main = gradleProject.getSourceSets().get("main");
@@ -369,10 +381,12 @@ public class JavaUpgradeIssuesDetectionService {
             
             // Check CVEs for all collected dependencies
             final List<String> coordinates = new ArrayList<>(coordinateSet);
+            log.info("Checking CVE issues for {} dependencies", coordinates.size());
             return CVECheckService.getInstance().batchGetCVEIssues(coordinates);
             
         } catch (Exception e) {
             // Error checking CVE issues
+            log.error("Error checking CVE issues: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
@@ -408,7 +422,7 @@ public class JavaUpgradeIssuesDetectionService {
         checkedPackages.add(checkItem.getPackageId());
         
         // Check if version satisfies the supported version range
-        if (!satisfiesVersionRange(version, checkItem.supportedVersion)) {
+        if (!satisfiesVersionRange(version, checkItem.supportedVersion) && isVersionEndOfLife(version, checkItem)) {
             return JavaUpgradeIssue.builder()
                 .packageId(checkItem.getPackageId())
                 .packageDisplayName(checkItem.displayName)
@@ -425,7 +439,7 @@ public class JavaUpgradeIssuesDetectionService {
         
         return null;
     }
-    
+
     /**
      * Gets the version from parent POM.
      */
@@ -441,6 +455,8 @@ public class JavaUpgradeIssuesDetectionService {
                 return parentId.getVersion();
             }
         } catch (Exception e) {
+            // Error getting parent version
+            log.error("Error getting parent version for {}:{} - {}", groupId, artifactId, e.getMessage(), e);
         }
         return null;
     }
@@ -470,13 +486,7 @@ public class JavaUpgradeIssuesDetectionService {
      */
     private boolean satisfiesSingleCondition(@Nonnull String version, @Nonnull String condition) {
         try {
-            // Handle "x.y.z" pattern (e.g., "2.7.x" means any 2.7.*)
-            if (condition.endsWith(".x")) {
-                final String prefix = condition.substring(0, condition.length() - 2);
-                return version.startsWith(prefix + ".");
-            }
-            
-            // Handle ">=" pattern
+            // Handle ">=" pattern (check before ".x" pattern to handle ">=3.2.x" correctly)
             if (condition.startsWith(">=")) {
                 String minVersion = condition.substring(2).trim();
                 // Handle version with wildcard, e.g. ">=3.2.x" -> "3.2"
@@ -488,7 +498,7 @@ public class JavaUpgradeIssuesDetectionService {
                 return current.compareTo(min) >= 0;
             }
             
-            // Handle ">" pattern
+            // Handle ">" pattern (check before ".x" pattern to handle ">3.2.x" correctly)
             if (condition.startsWith(">")) {
                 String minVersion = condition.substring(1).trim();
                 // Handle version with wildcard, e.g. ">3.2.x" -> "3.2"
@@ -500,11 +510,18 @@ public class JavaUpgradeIssuesDetectionService {
                 return current.compareTo(min) > 0;
             }
             
+            // Handle "x.y.x" pattern (e.g., "2.7.x" means any 2.7.*)
+            if (condition.endsWith(".x")) {
+                final String prefix = condition.substring(0, condition.length() - 2);
+                return version.startsWith(prefix + ".");
+            }
+            
             // Handle exact version match
             return version.equals(condition);
             
         } catch (Exception e) {
             // Error checking version range
+            log.error("Error checking version '{}' against condition '{}': {}", version, condition, e.getMessage(), e);
             return false;
         }
     }
@@ -527,6 +544,7 @@ public class JavaUpgradeIssuesDetectionService {
             java.time.YearMonth currentDate = java.time.YearMonth.now();
             return currentDate.isAfter(eolDate);
         } catch (Exception e) {
+            log.error("Error parsing EOL date '{}': {}", eolDateStr, e.getMessage());
             return false;
         }
     }

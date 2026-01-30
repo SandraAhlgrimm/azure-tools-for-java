@@ -14,6 +14,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
  * This implementation is aligned with the TypeScript version in vscode-java-dependency.
  * @see <a href="https://github.com/microsoft/vscode-java-dependency/blob/main/src/upgrade/cve.ts">cve.ts</a>
  */
+@Slf4j
 public class CVECheckService {
     
     private static final String GITHUB_API_BASE = "https://api.github.com/advisories";
@@ -131,9 +133,14 @@ public class CVECheckService {
             // Configure proxy using IntelliJ's JdkProxyProvider
             // This respects the IDE's proxy settings (Settings → HTTP Proxy)
             builder.proxy(JdkProxyProvider.getInstance().getProxySelector());
+        } catch (Throwable e) {
+            log.error("Failed to configure proxy from IntelliJ proxy settings", e);
+        }
+        try{
             builder.sslContext(CertificateManager.getInstance().getSslContext());
         } catch (Throwable e) {
             // Failed to get IntelliJ SSL context, using default
+            log.error("Failed to configure HTTP client SSL context from IntelliJ CertificateManager, using default.", e);
         }
         this.httpClient = builder.build();
         this.gson = new Gson();
@@ -164,7 +171,7 @@ public class CVECheckService {
                 final List<JavaUpgradeIssue> batchIssues = getCveUpgradeIssues(batch);
                 allIssues.addAll(batchIssues);
             } catch (Exception e) {
-                // Error checking CVEs for batch
+                log.error("Error fetching CVE issues for batch starting at index " + i, e);
             }
         }
         
@@ -257,6 +264,7 @@ public class CVECheckService {
             return depsCves;
         } catch (Exception e) {
             // Error fetching CVEs
+            log.error("Error fetching CVEs from GitHub Security Advisory API", e);
             return Collections.emptyList();
         }
     }
@@ -327,6 +335,7 @@ public class CVECheckService {
             
         } catch (Exception e) {
             // Error retrieving vulnerability data from GitHub
+            log.error("Error retrieving vulnerability data from GitHub Security Advisory API", e);
             return Collections.emptyList();
         }
     }
@@ -390,6 +399,7 @@ public class CVECheckService {
             
         } catch (Exception e) {
             // Error parsing advisory JSON
+            log.error("Error parsing advisories JsonArray from GitHub Security Advisory API", e);
         }
         
         return cves;
@@ -405,6 +415,7 @@ public class CVECheckService {
             return parseAdvisories(gson.fromJson(jsonResponse, JsonArray.class));
         } catch (Exception e) {
             // Error parsing advisory JSON
+            log.error("Error parsing advisories JsonString from GitHub Security Advisory API", e);
             return Collections.emptyList();
         }
     }
@@ -534,6 +545,7 @@ public class CVECheckService {
             return true;
         } catch (Exception e) {
             // Error checking version range
+            log.error("Error checking if version {} is in range {}", version, range, e);
             return false;
         }
     }

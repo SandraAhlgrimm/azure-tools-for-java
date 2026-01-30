@@ -14,11 +14,12 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.TO_INSTALL_APP_MODE_PLUGIN;
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.isAppModPluginInstalled;
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
 
 /**
  * Context menu action to upgrade a Java project using GitHub Copilot.
@@ -27,6 +28,7 @@ import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.U
  * - pom.xml (Maven projects)
  * - build.gradle or build.gradle.kts (Gradle projects)
  */
+@Slf4j
 public class JavaUpgradeContextMenuAction extends AnAction {
     // text, description, and icon are defined in azure-intellij-plugin-appmod.xml
     public JavaUpgradeContextMenuAction() {
@@ -40,42 +42,55 @@ public class JavaUpgradeContextMenuAction extends AnAction {
 
     @Override
     public void update(@NotNull AnActionEvent e) {
-        final Project project = e.getProject();
-        final VirtualFile file = e.getData(CommonDataKeys.VIRTUAL_FILE);
-        
-        boolean visible = false;
-        
-        if (project != null && file != null) {
-            // Check if it's a project root, pom.xml, or build.gradle file
-            visible = isProjectRoot(project, file) || 
-                      isMavenBuildFile(file) || 
-                      isGradleBuildFile(file);
+        try {
+            final Project project = e.getProject();
+            final VirtualFile file = e.getData(CommonDataKeys.VIRTUAL_FILE);
+
+            boolean visible = false;
+
+            if (project != null && file != null) {
+                // Check if it's a project root, pom.xml, or build.gradle file
+                visible = isProjectRoot(project, file) ||
+                        isMavenBuildFile(file) ||
+                        isGradleBuildFile(file);
+            }
+            if (!isAppModPluginInstalled()) {
+                e.getPresentation().setText(e.getPresentation().getText() + TO_INSTALL_APP_MODE_PLUGIN);
+            }
+            if (visible){
+                AppModUtils.logTelemetryEvent("showJavaUpgradeContextMenuAction");
+            }
+            e.getPresentation().setEnabledAndVisible(visible);
+        } catch (Throwable ex) {
+            // In case of any error, hide the action
+            e.getPresentation().setEnabledAndVisible(false);
         }
-        if (!isAppModPluginInstalled()) {
-            e.getPresentation().setText(e.getPresentation().getText() + TO_INSTALL_APP_MODE_PLUGIN);
-        }
-        e.getPresentation().setEnabledAndVisible(visible);
     }
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        final Project project = e.getProject();
-        if (project == null) {
-            return;
-        }
+        try {
+            final Project project = e.getProject();
+            if (project == null) {
+                return;
+            }
 
-        final VirtualFile file = e.getData(CommonDataKeys.VIRTUAL_FILE);
-        String prompt = buildUpgradePrompt(project, file);
-        
-        // Open Copilot chat with the upgrade prompt
-        JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
-        AppModUtils.logTelemetryEvent("openJavaUpgradeCopilotChatFromContextMenu");
+            final VirtualFile file = e.getData(CommonDataKeys.VIRTUAL_FILE);
+            String prompt = buildUpgradePrompt();
+
+            // Open Copilot chat with the upgrade prompt
+            JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
+            AppModUtils.logTelemetryEvent("openJavaUpgradeCopilotChatFromContextMenu");
+        } catch (Throwable ex) {
+            // Log error but do not crash
+            log.error("Failed to perform Java upgrade action from context menu", ex);
+        }
     }
 
     /**
      * Builds the upgrade prompt based on the selected file.
      */
-    private String buildUpgradePrompt(Project project, VirtualFile file) {
+    private String buildUpgradePrompt() {
         return UPGRADE_JAVA_AND_FRAMEWORK_PROMPT;
     }
 

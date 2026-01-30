@@ -11,12 +11,12 @@ import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
-import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
@@ -27,6 +27,7 @@ import java.util.List;
  * Startup activity that detects outdated JDK and framework versions when a project is opened.
  * This runs after the project is fully loaded and shows notifications for any detected issues.
  */
+@Slf4j
 public class JavaUpgradeCheckStartupActivity implements ProjectActivity, DumbAware {
     
     // Additional delay after smart mode to ensure Maven/Gradle sync is complete
@@ -45,7 +46,10 @@ public class JavaUpgradeCheckStartupActivity implements ProjectActivity, DumbAwa
                         }
                         performJavaUpgradeCheck(project);
                     },
-                    error -> { /* Error during Java upgrade check startup */ }
+                    error -> {
+                        /* Error during Java upgrade check startup */
+                    log.error("Error during Java upgrade check startup for project: {}", project.getName(), error);
+                    }
                 );
         });
         
@@ -57,6 +61,7 @@ public class JavaUpgradeCheckStartupActivity implements ProjectActivity, DumbAwa
      */
     private void performJavaUpgradeCheck(@Nonnull Project project) {
         try {
+            log.info("Starting Java upgrade issues detection for project: {}", project.getName());
             // Run the analysis in a background thread
             AzureTaskManager.getInstance().runInBackground("Checking Java upgrade issues", () -> {
                 if (project.isDisposed()) {
@@ -68,7 +73,6 @@ public class JavaUpgradeCheckStartupActivity implements ProjectActivity, DumbAwa
                 cache.refresh();
                 
                 // Get all issues including CVEs
-                final JavaUpgradeIssuesDetectionService detectionService = JavaUpgradeIssuesDetectionService.getInstance();
                 final List<JavaUpgradeIssue> allIssues = new java.util.ArrayList<>();
                 allIssues.addAll(cache.getJdkIssues());
                 allIssues.addAll(cache.getDependencyIssues());
@@ -92,8 +96,9 @@ public class JavaUpgradeCheckStartupActivity implements ProjectActivity, DumbAwa
                 });
             });
             
-        } catch (Exception e) {
+        } catch (Throwable e) {
             // Error performing Java version check
+            log.error("Error performing Java upgrade check for project: {}", project.getName(), e);
         }
     }
 }

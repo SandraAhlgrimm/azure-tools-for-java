@@ -22,12 +22,13 @@ import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import com.microsoft.azure.toolkit.lib.common.task.AzureTaskManager;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller.*;
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.*;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.*;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesDetectionService.*;
 import java.lang.reflect.Method;
 
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import com.github.copilot.api.CopilotChatService;
 import javax.annotation.Nonnull;
@@ -40,6 +41,7 @@ import java.util.Objects;
  * Notifications appear in the bottom-right corner of the IDE.
  * Only shows one notification at a time (the first detected issue).
  */
+@Slf4j
 public class JavaVersionNotificationService {
     
     private static final String NOTIFICATION_GROUP_ID = "Azure Toolkit - Java Version Check";
@@ -77,11 +79,13 @@ public class JavaVersionNotificationService {
         
         // Check if notifications are enabled for this feature
         if (!isNotificationsEnabled(project)) {
+            log.info("Java upgrade notifications are disabled.");
             return;
         }
         
         // Check if we should skip based on timing (deferred)
         if (!shouldCheckNow(project)) {
+            log.info("Java upgrade notifications are deferred until later.");
             return;
         }
         
@@ -99,7 +103,7 @@ public class JavaVersionNotificationService {
         String title = issue.getTitle();
         if (issue.getEofDate() != null){
             //change 2020-06 to June 2020
-            String formattedDate = formatEofDate(issue.getEofDate());
+            String formattedDate = formatEolDate(issue.getEofDate());
             title = String.format("%s (%s)", title, formattedDate);
         }
         final Notification notification = new Notification(
@@ -116,7 +120,6 @@ public class JavaVersionNotificationService {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
                     openCopilotChatWithUpgradePrompt(project, issue);
-               //     notification.expire();
                 }
             });
         } else {
@@ -126,7 +129,6 @@ public class JavaVersionNotificationService {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
                     AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project, true));
-                    // notification.expire();
                 }
             });
         }
@@ -301,26 +303,32 @@ public class JavaVersionNotificationService {
      * @param prompt The prompt to send to Copilot
      */
     public void openCopilotChatWithPrompt(@Nonnull Project project, @Nonnull String prompt) {
-        AzureTaskManager.getInstance().runLater(() -> {
-            if (!isAppModPluginInstalled()) {
-               // showGenericUpgradeGuidance(project, prompt);
-                AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project, true));
-                return;
-            }
-            
-            // Try direct API call first (works when plugin versions match)
-            if (tryDirectCopilotCall(project, prompt)) {
-                return; // Success, no need for reflection
-            }
-            
-            // Fallback to reflection for cross-version compatibility
-            if (tryReflectionCopilotCall(project, prompt)) {
-                return; // Success via reflection
-            }
-            
-            // Both approaches failed
+        try {
+            AzureTaskManager.getInstance().runLater(() -> {
+                if (!isAppModPluginInstalled()) {
+                    // showGenericUpgradeGuidance(project, prompt);
+                    AppModPluginInstaller.showInstallConfirmation(project, true, () -> AppModPluginInstaller.installPlugin(project, true));
+                    return;
+                }
+
+//            //TODO Try direct API call first (works when plugin versions match)
+//            if (tryDirectCopilotCall(project, prompt)) {
+//                return; // Success, no need for reflection
+//            }
+
+                // Fallback to reflection for cross-version compatibility
+                if (tryReflectionCopilotCall(project, prompt)) {
+                    return; // Success via reflection
+                }
+
+                // Both approaches failed
+                log.info("Failed to open Copilot chat via both direct and reflection methods.");
+                showGenericUpgradeGuidance(project, prompt);
+            });
+        } catch (Exception e) {
+            log.error("Error opening Copilot chat: " + e.getMessage());
             showGenericUpgradeGuidance(project, prompt);
-        });
+        }
     }
     
     /**
@@ -343,7 +351,7 @@ public class JavaVersionNotificationService {
             }
         } catch (Error | Exception e) {
             // Direct call failed (version mismatch, class not found, etc.) - will try reflection
-            System.out.println("Direct Copilot call failed: " +  e.getMessage());
+            log.info("Direct Copilot call failed: " +  e.getMessage());
         }
         return false;
     }
@@ -390,6 +398,7 @@ public class JavaVersionNotificationService {
                         }
                     } catch (Exception ex) {
                         // Error configuring query builder via reflection
+                        log.error("Error configuring Copilot query via reflection: " + ex.getMessage());
                     }
                     return Unit.INSTANCE;
                 };
@@ -398,6 +407,7 @@ public class JavaVersionNotificationService {
             }
         } catch (Exception e) {
             // Reflection call failed
+            log.error("Reflection Copilot call failed: " + e.getMessage());
         }
         return false;
     }
@@ -434,6 +444,7 @@ public class JavaVersionNotificationService {
             // Method withModel not found in QueryOptionBuilder, skipping
         } catch (Exception ex) {
             // Error calling withModel via reflection, can be ignored
+            log.error("Error setting model via reflection: " + ex.getMessage());
         }
     }
     

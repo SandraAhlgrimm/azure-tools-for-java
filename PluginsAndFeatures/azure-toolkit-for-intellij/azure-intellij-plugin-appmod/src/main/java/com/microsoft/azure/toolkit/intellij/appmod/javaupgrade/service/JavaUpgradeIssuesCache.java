@@ -10,10 +10,12 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.JavaUpgradeIssue;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,13 +26,14 @@ import java.util.concurrent.atomic.AtomicReference;
  * Issues are computed once at startup and cached to avoid repeated expensive scans
  * during inspection runs. The cache can be invalidated when project model changes.
  */
+@Slf4j
 @Service(Service.Level.PROJECT)
 public final class JavaUpgradeIssuesCache implements Disposable {
 
     private final Project project;
-    private final AtomicReference<List<JavaUpgradeIssue>> jdkIssuesCache = new AtomicReference<>();
-    private final AtomicReference<List<JavaUpgradeIssue>> dependencyIssuesCache = new AtomicReference<>();
-    private final AtomicReference<List<JavaUpgradeIssue>> cvesIssuesCache = new AtomicReference<>();
+    private  List<JavaUpgradeIssue> jdkIssuesCache = new ArrayList<>();
+    private  List<JavaUpgradeIssue> dependencyIssuesCache = new ArrayList<>();
+    private  List<JavaUpgradeIssue> cvesIssuesCache = new ArrayList<>();
     private final AtomicBoolean initialized = new AtomicBoolean(false);
 
     public JavaUpgradeIssuesCache(@NotNull Project project) {
@@ -46,8 +49,7 @@ public final class JavaUpgradeIssuesCache implements Disposable {
      */
     @Nonnull
     public List<JavaUpgradeIssue> getJdkIssues() {
-        List<JavaUpgradeIssue> cached = jdkIssuesCache.get();
-        return cached != null ? cached : Collections.emptyList();
+        return jdkIssuesCache != null ? jdkIssuesCache : Collections.emptyList();
     }
 
     /**
@@ -55,8 +57,7 @@ public final class JavaUpgradeIssuesCache implements Disposable {
      */
     @Nonnull
     public List<JavaUpgradeIssue> getDependencyIssues() {
-        List<JavaUpgradeIssue> cached = dependencyIssuesCache.get();
-        return cached != null ? cached : Collections.emptyList();
+        return dependencyIssuesCache != null ? dependencyIssuesCache : Collections.emptyList();
     }
 
     /**
@@ -64,8 +65,7 @@ public final class JavaUpgradeIssuesCache implements Disposable {
      */
     @Nonnull
     public List<JavaUpgradeIssue> getCveIssues() {
-        List<JavaUpgradeIssue> cached = cvesIssuesCache.get();
-        return cached != null ? cached : Collections.emptyList();
+        return cvesIssuesCache != null ? cvesIssuesCache : Collections.emptyList();
     }
 
     /**
@@ -123,30 +123,34 @@ public final class JavaUpgradeIssuesCache implements Disposable {
      * This should be called at project startup and when the project model changes.
      */
     public void refresh() {
-        if (project.isDisposed()) {
-            return;
-        }
+        try {
+            if (project.isDisposed()) {
+                return;
+            }
+            log.info("Refreshing Java upgrade issues cache for project: {}", project.getName());
+            final JavaUpgradeIssuesDetectionService detectionService = JavaUpgradeIssuesDetectionService.getInstance();
 
-        final JavaUpgradeIssuesDetectionService detectionService = JavaUpgradeIssuesDetectionService.getInstance();
-        
-        // Scan for issues
-        List<JavaUpgradeIssue> jdkIssues = detectionService.getJavaIssues(project);
-        List<JavaUpgradeIssue> dependencyIssues = detectionService.getDependencyIssues(project);
-        List<JavaUpgradeIssue> cveIssues = detectionService.getCVEIssues(project);
-        // Update cache
-        jdkIssuesCache.set(Collections.unmodifiableList(jdkIssues));
-        dependencyIssuesCache.set(Collections.unmodifiableList(dependencyIssues));
-        cvesIssuesCache.set(Collections.unmodifiableList(cveIssues));
-        initialized.set(true);
+            // Scan for issues
+            jdkIssuesCache = detectionService.getJavaIssues(project);
+            log.info("Detected {} JDK issues", jdkIssuesCache.size());
+            dependencyIssuesCache= detectionService.getDependencyIssues(project);
+            log.info("Detected {} dependency issues", dependencyIssuesCache.size());
+            cvesIssuesCache = detectionService.getCVEIssues(project);
+            log.info("Detected {} CVE issues", cvesIssuesCache.size());
+
+            initialized.set(true);
+        } catch (Throwable e) {
+            log.error("Error refreshing Java upgrade issues cache for project: {}", project.getName(), e);
+        }
     }
 
     /**
      * Invalidates the cache, forcing a refresh on next access.
      */
     public void invalidate() {
-        jdkIssuesCache.set(null);
-        dependencyIssuesCache.set(null);
-        cvesIssuesCache.set(null);
+        jdkIssuesCache = null;
+        dependencyIssuesCache = null;
+        cvesIssuesCache = null;
         initialized.set(false);
     }
 

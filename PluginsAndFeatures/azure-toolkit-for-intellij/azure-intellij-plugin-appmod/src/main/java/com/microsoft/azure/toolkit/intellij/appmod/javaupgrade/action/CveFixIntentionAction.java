@@ -18,10 +18,12 @@ import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgra
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
 
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
+import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.PomXmlUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.SCAN_AND_RESOLVE_CVES_PROMPT;
-import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.SCAN_AND_RESOLVE_CVES_PROMPT;
+import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.SCAN_AND_RESOLVE_CVES_WITH_COPILOT_DISPLAY_NAME;
 
 /**
  * Intention action to fix CVE vulnerabilities in dependencies using GitHub Copilot.
@@ -30,6 +32,7 @@ import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.Contants.S
  * 
  * Implements HighPriorityAction to appear at the top of the quick-fix list.
  */
+@Slf4j
 public class CveFixIntentionAction implements IntentionAction, HighPriorityAction {
     
     // Cached dependency info from isAvailable() for use in getText()
@@ -51,32 +54,32 @@ public class CveFixIntentionAction implements IntentionAction, HighPriorityActio
 
     @Override
     public boolean isAvailable(@NotNull Project project, Editor editor, PsiFile file) {
-        // Reset cached values
-        cachedGroupId = null;
-        cachedArtifactId = null;
-        
-        if (file == null || editor == null) {
-            return false;
-        }
-        
-        // Only available for pom.xml files
-        final String fileName = file.getName();
-        if (!fileName.equals("pom.xml")) {
-            return false;
-        }
         
         try {
+            // Reset cached values
+            cachedGroupId = null;
+            cachedArtifactId = null;
+
+            if (file == null || editor == null) {
+                return false;
+            }
+
+            // Only available for pom.xml files
+            final String fileName = file.getName();
+            if (!fileName.equals("pom.xml")) {
+                return false;
+            }
             final int offset = editor.getCaretModel().getOffset();
             final String documentText = editor.getDocument().getText();
             
             // Try to extract dependency info - only show if cursor is within a <dependency> block
-            final int dependencyStart = findDependencyStart(documentText, offset);
-            final int dependencyEnd = findDependencyEnd(documentText, offset);
+            final int dependencyStart = PomXmlUtils.findDependencyStart(documentText, offset);
+            final int dependencyEnd = PomXmlUtils.findDependencyEnd(documentText, offset);
             
             if (dependencyStart >= 0 && dependencyEnd > dependencyStart) {
                 final String dependencyBlock = documentText.substring(dependencyStart, dependencyEnd);
-                cachedGroupId = extractXmlValue(dependencyBlock, "groupId");
-                cachedArtifactId = extractXmlValue(dependencyBlock, "artifactId");
+                cachedGroupId = PomXmlUtils.extractXmlValue(dependencyBlock, "groupId");
+                cachedArtifactId = PomXmlUtils.extractXmlValue(dependencyBlock, "artifactId");
                 
                 // Only show if we have valid dependency info (not for parent/plugin sections)
                 if(cachedGroupId != null && cachedArtifactId != null) {
@@ -85,8 +88,9 @@ public class CveFixIntentionAction implements IntentionAction, HighPriorityActio
                     return issue != null;
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             // Ignore and return false
+            log.error("Error in CveFixIntentionAction.isAvailable: ", e);
         }
         
         return false;
@@ -94,70 +98,25 @@ public class CveFixIntentionAction implements IntentionAction, HighPriorityActio
 
     @Override
     public void invoke(@NotNull Project project, Editor editor, PsiFile file) throws IncorrectOperationException {
-        if (file == null || editor == null) {
-            return;
+        try {
+            if (file == null || editor == null) {
+                return;
+            }
+
+            // Try to extract dependency information from the current context
+            final String prompt = buildPromptFromContext();
+            JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
+            AppModUtils.logTelemetryEvent("openCveFixCopilotChatFromIntentionAction");
+        } catch (Throwable e) {
+            log.error("Failed to invoke CveFixIntentionAction: ", e);
         }
-        
-        // Try to extract dependency information from the current context
-        final String prompt = buildPromptFromContext(editor, file);
-        JavaVersionNotificationService.getInstance().openCopilotChatWithPrompt(project, prompt);
-        AppModUtils.logTelemetryEvent("openCveFixCopilotChatFromIntentionAction");
     }
 
     /**
      * Builds a prompt based on the current editor context.
      */
-    private String buildPromptFromContext(@NotNull Editor editor, @NotNull PsiFile file) {
+    private String buildPromptFromContext() {
         return SCAN_AND_RESOLVE_CVES_PROMPT;
-    }
-
-    /**
-     * Finds the start of the dependency block containing the given offset.
-     */
-    private int findDependencyStart(@NotNull String text, int offset) {
-        // Look for <dependency> tag before the offset
-        int searchStart = Math.max(0, offset - 500);
-        String searchArea = text.substring(searchStart, offset);
-        int lastDependency = searchArea.lastIndexOf("<dependency>");
-        if (lastDependency >= 0) {
-            return searchStart + lastDependency;
-        }
-        return -1;
-    }
-
-    /**
-     * Finds the end of the dependency block containing the given offset.
-     */
-    private int findDependencyEnd(@NotNull String text, int offset) {
-        // Look for </dependency> tag after the offset
-        int searchEnd = Math.min(text.length(), offset + 500);
-        String searchArea = text.substring(offset, searchEnd);
-        int endDependency = searchArea.indexOf("</dependency>");
-        if (endDependency >= 0) {
-            return offset + endDependency + "</dependency>".length();
-        }
-        return -1;
-    }
-
-    /**
-     * Extracts a value from an XML tag.
-     */
-    private String extractXmlValue(@NotNull String xml, @NotNull String tagName) {
-        final String startTag = "<" + tagName + ">";
-        final String endTag = "</" + tagName + ">";
-        
-        int start = xml.indexOf(startTag);
-        if (start < 0) {
-            return null;
-        }
-        start += startTag.length();
-        
-        int end = xml.indexOf(endTag, start);
-        if (end < 0) {
-            return null;
-        }
-        
-        return xml.substring(start, end).trim();
     }
 
     @Override

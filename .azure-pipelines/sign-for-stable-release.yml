@@ -113,14 +113,17 @@ extends:
                     dotnet "$env:MBSIGN_APPFOLDER/DDSignFiles.dll" -- /filelist:signing-filelist.xml
                     Remove-Item signing-filelist.xml                    
                   workingDirectory: 'artifacts/intellij/folder'
-              - task: PowerShell@2
+              - task: CmdLine@2
                 displayName: Repackage
                 inputs:
-                  targetType: inline
                   script: |
-                    Set-Location ".\artifacts\intellij\folder"
-                    Remove-Item -Path "*.log" -Force
-                    Compress-Archive -Path ".\*" -DestinationPath "..\..\azure-toolkit-for-intellij.zip" -CompressionLevel NoCompression -Force
+                    echo Starting repackaging...
+                    cd artifacts\intellij\folder
+                    echo Removing log files...
+                    del /s /q *.log
+                    echo Creating final zip archive: azure-toolkit-for-intellij-$(Build.BuildNumber).zip
+                    tar -a -c -f ..\..\azure-toolkit-for-intellij-$(Build.BuildNumber).zip *
+                    echo Repackaging completed successfully
               - task: CopyFiles@2
                 displayName: "Copy Files to: $(build.artifactstagingdirectory)"
                 inputs:

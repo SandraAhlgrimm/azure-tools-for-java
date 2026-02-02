@@ -209,4 +209,4 @@ extends:
                       inputs:
                         targetType: inline
                         script: |
-                          curl.exe -i --header "Authorization: Bearer ${env:RELEASE_TOKEN}" -F pluginId=28791 -F "file=@$(Pipeline.Workspace)/plugin/azure-intellij-$(Build.BuildNumber).zip" -F channel=$(RELEASE_CHANNEL) https://plugins.jetbrains.com/plugin/uploadPlugin
+                          curl.exe -i --header "Authorization: Bearer $(RELEASE_TOKEN)" -F pluginId=8053 -F "file=@$(Pipeline.Workspace)/plugin/azure-intellij-$(Build.BuildNumber).zip" -F channel=$(RELEASE_CHANNEL) https://plugins.jetbrains.com/plugin/uploadPlugin

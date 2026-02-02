@@ -9,16 +9,16 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
+import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.ProblemsViewUtils;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.*;
 
 /**
@@ -62,7 +62,7 @@ public class CveFixInProblemsViewAction extends AnAction implements DumbAware {
             }
 
             // Check if we're in the Problems View context with a vulnerability
-            final String description = extractProblemDescription(e);
+            final String description = ProblemsViewUtils.extractProblemDescription(e);
             if (description == null) {
                 e.getPresentation().setEnabledAndVisible(false);
                 return;
@@ -89,7 +89,7 @@ public class CveFixInProblemsViewAction extends AnAction implements DumbAware {
         }
     }
 
-    private boolean isBuildFile(VirtualFile file){
+    private boolean isBuildFile(VirtualFile file) {
         return file != null &&
                 (file.getName().equals("pom.xml") || file.getName().endsWith(".gradle") || file.getName().endsWith(".gradle.kts"));
     }
@@ -100,41 +100,10 @@ public class CveFixInProblemsViewAction extends AnAction implements DumbAware {
     }
 
     /**
-     * Extracts the problem description from the action event context.
-     */
-    @Nullable
-    private String extractProblemDescription(@NotNull AnActionEvent e) {
-
-        // Approach 3: Try to get selected items from the tree
-        try {
-            final Object[] selectedItems = e.getData(PlatformDataKeys.SELECTED_ITEMS);
-            if (selectedItems != null && selectedItems.length > 0) {
-                // Concatenate all selected items' string representations
-                final StringBuilder sb = new StringBuilder();
-                for (Object item : selectedItems) {
-                    if (item != null) {
-                        sb.append(item.toString()).append(" ");
-                    }
-                }
-                final String result = sb.toString().trim();
-                if (!result.isEmpty()) {
-                    return result;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
-    }
-
-    /**
-     * Extracts CVE ID from the problem description.
+     * Checks if the description contains a CVE issue marker.
      */
     private boolean isCVEIssue(@NotNull String description) {
         // Pattern: CVE-YYYY-NNNNN
-        final int cveIndex = description.toUpperCase().indexOf(CVE_MARKER);
-        if (cveIndex >= 0) {
-            return true;
-        }
-        return false;
+        return description.toUpperCase().contains(CVE_MARKER);
     }
 }

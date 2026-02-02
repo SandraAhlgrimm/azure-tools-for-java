@@ -13,10 +13,10 @@ import com.microsoft.azure.toolkit.intellij.appmod.common.AppModPluginInstaller;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.VulnerabilityInfo;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaUpgradeIssuesCache;
 import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.service.JavaVersionNotificationService;
+import com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.ProblemsViewUtils;
 import com.microsoft.azure.toolkit.intellij.appmod.utils.AppModUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.utils.Constants.*;
 import static com.microsoft.azure.toolkit.intellij.appmod.javaupgrade.dao.VulnerabilityInfo.parseVulnerabilityDescription;
@@ -34,7 +34,6 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
     public CveFixDependencyInProblemsViewAction() {
         super();
     }
-
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
@@ -71,7 +70,7 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
             }
 
             // Check if we're in the Problems View context with a vulnerability
-            final String description = extractProblemDescription(e);
+            final String description = ProblemsViewUtils.extractProblemDescription(e);
             if (description == null) {
                 e.getPresentation().setEnabledAndVisible(false);
                 return;
@@ -102,7 +101,7 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
         }
     }
 
-    private boolean isBuildFile(VirtualFile file){
+    private boolean isBuildFile(VirtualFile file) {
         return file != null &&
                 (file.getName().equals("pom.xml") || file.getName().endsWith(".gradle") || file.getName().endsWith(".gradle.kts"));
     }
@@ -113,34 +112,7 @@ public class CveFixDependencyInProblemsViewAction extends AnAction implements Du
     }
 
     /**
-     * Extracts the problem description from the action event context.
-     */
-    @Nullable
-    private String extractProblemDescription(@NotNull AnActionEvent e) {
-
-        // Approach 3: Try to get selected items from the tree
-        try {
-            final Object[] selectedItems = e.getData(PlatformDataKeys.SELECTED_ITEMS);
-            if (selectedItems != null && selectedItems.length > 0) {
-                // Concatenate all selected items' string representations
-                final StringBuilder sb = new StringBuilder();
-                for (Object item : selectedItems) {
-                    if (item != null) {
-                        sb.append(item.toString()).append(" ");
-                    }
-                }
-                final String result = sb.toString().trim();
-                if (!result.isEmpty()) {
-                    return result;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
-    }
-
-    /**
-     * Extracts CVE ID from the problem description.
+     * Checks if the description contains a CVE issue marker.
      */
     private boolean isCVEIssue(@NotNull String description) {
         // Pattern: CVE-YYYY-NNNNN

@@ -30,7 +30,6 @@ import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import com.github.copilot.api.CopilotChatService;
 import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
@@ -335,26 +334,26 @@ public class JavaVersionNotificationService {
      * Tries to call CopilotChatService directly (works when compile-time and runtime versions match).
      * @return true if successful, false if an error occurred
      */
-    private boolean tryDirectCopilotCall(@Nonnull Project project, @Nonnull String prompt) {
-        try {
-            CopilotChatService service = project.getService(CopilotChatService.class);
-            if (service != null) {
-                service.query(DataContext.EMPTY_CONTEXT, builder -> {
-                    builder.withInput(prompt);
-                    builder.withAgentMode();
-                    builder.withNewSession();
-                    withModelCompatibility(builder, DEFAULT_MODEL_NAME);
-                    builder.withSessionIdReceiver(sessionId -> null);
-                    return null;
-                });
-                return true;
-            }
-        } catch (Error | Exception e) {
-            // Direct call failed (version mismatch, class not found, etc.) - will try reflection
-            log.info("Direct Copilot call failed: " +  e.getMessage());
-        }
-        return false;
-    }
+//    private boolean tryDirectCopilotCall(@Nonnull Project project, @Nonnull String prompt) {
+//        try {
+//            CopilotChatService service = project.getService(CopilotChatService.class);
+//            if (service != null) {
+//                service.query(DataContext.EMPTY_CONTEXT, builder -> {
+//                    builder.withInput(prompt);
+//                    builder.withAgentMode();
+//                    builder.withNewSession();
+//                    withModelCompatibility(builder, DEFAULT_MODEL_NAME);
+//                    builder.withSessionIdReceiver(sessionId -> null);
+//                    return null;
+//                });
+//                return true;
+//            }
+//        } catch (Error | Exception e) {
+//            // Direct call failed (version mismatch, class not found, etc.) - will try reflection
+//            log.info("Direct Copilot call failed: " +  e.getMessage());
+//        }
+//        return false;
+//    }
     
     /**
      * Tries to call CopilotChatService via reflection for cross-version compatibility.

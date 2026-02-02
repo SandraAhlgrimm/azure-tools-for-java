@@ -3,6 +3,7 @@
 All notable changes to "Azure Toolkit for IntelliJ IDEA" will be documented in this file.
 
 - [Change Log](#change-log)
+  - [3.97.1](#3971)
   - [3.97.0](#3970)
   - [3.96.2](#3962)
   - [3.96.1](#3961)
@@ -119,6 +120,10 @@ All notable changes to "Azure Toolkit for IntelliJ IDEA" will be documented in t
   - [3.0.8](#308)
   - [3.0.7](#307)
   - [3.0.6](#306)
+
+## 3.97.1
+### Fixed
+- Fixed [#11647](https://github.com/microsoft/azure-tools-for-java/issues/11647): Error checking JDK version: x.xx.x
 
 ## 3.97.0
 ### Added

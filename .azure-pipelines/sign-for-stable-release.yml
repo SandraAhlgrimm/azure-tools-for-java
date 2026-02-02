@@ -166,7 +166,7 @@ extends:
                       Write-Host "  ✓ Signed successfully"
                     }
                     Write-Host "All JAR files signed successfully"
-                  workingDirectory: 'artifacts/intellij/folder/azure-intellij/lib'
+                  workingDirectory: 'artifacts/intellij/folder/azure-toolkit-for-intellij/lib'
               - task: CmdLine@2
                 displayName: Repackage
                 inputs:

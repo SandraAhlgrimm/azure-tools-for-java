@@ -44,6 +44,7 @@
   <idea-version since-build="232.7754.73" until-build="232.*"/>
   <xi:include href="/META-INF/azure-intellij-plugin-lib.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/azure-intellij-plugin-lib-java.xml" xpointer="xpointer(/idea-plugin/*)"/>
+  <xi:include href="/META-INF/azure-intellij-plugin-appmod.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/azure-intellij-resource-connector-lib.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/azure-intellij-resource-connector-lib-java.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/azure-intellij-plugin-service-explorer.xml" xpointer="xpointer(/idea-plugin/*)"/>
@@ -111,6 +112,8 @@
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
       <reference ref="Connector.ShowAzureNode"/>
       <reference ref="AzureToolkit.ConnectToAzureResource"/>
+      <separator/>
+      <reference ref="Actions.MigrateToAzure"/>
       <separator/>
       <reference ref="Actions.RunFunction"/>
       <reference ref="Actions.DeployFunction"/>

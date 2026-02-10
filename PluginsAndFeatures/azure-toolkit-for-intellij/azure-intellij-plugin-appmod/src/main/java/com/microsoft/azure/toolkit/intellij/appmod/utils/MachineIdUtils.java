@@ -1,15 +1,12 @@
 package com.microsoft.azure.toolkit.intellij.appmod.utils;
 
-import com.microsoft.azure.toolkit.lib.common.utils.NetUtils;
-import org.apache.commons.lang3.StringUtils;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 /**
  * Utility class to generate a machine ID based on MAC address.
  *
- * Uses toolkit's NetUtils.getMac() which executes system commands (getmac on Windows,
+ * Uses NetUtils.getMac() which executes system commands (getmac on Windows,
  * ifconfig/ip on Unix) to get the MAC address. The MAC is then normalized to match
  * Node.js os.networkInterfaces() format (lowercase + colon separator) before hashing.
  *
@@ -23,9 +20,9 @@ public class MachineIdUtils {
 
         private static String computeMachineId() {
             try {
-                // Get MAC address using toolkit's NetUtils (uses getmac command on Windows)
+                // Get MAC address using NetUtils (uses getmac command on Windows, ifconfig/ip on Unix)
                 String macAddress = NetUtils.getMac();
-                if (StringUtils.isBlank(macAddress)) {
+                if (macAddress == null || macAddress.trim().isEmpty()) {
                     return null;
                 }
 
@@ -45,16 +42,16 @@ public class MachineIdUtils {
     }
 
     public static String getMachineId() {
-        if (MachineIdHolder.MACHINE_ID == null) {
+        if (MachineIdUtils.MachineIdHolder.MACHINE_ID == null) {
             return java.util.UUID.randomUUID().toString().toLowerCase();
         }
-        return MachineIdHolder.MACHINE_ID;
+        return MachineIdUtils.MachineIdHolder.MACHINE_ID;
     }
 
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
+            sb.append(String.format("%02x", b & 0xFF));
         }
         return sb.toString();
     }

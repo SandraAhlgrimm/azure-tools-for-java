@@ -47,6 +47,7 @@ trigger:
       - main
       - develop
       - release-*
+      - develop.eclipse
 
 pr:
   - main

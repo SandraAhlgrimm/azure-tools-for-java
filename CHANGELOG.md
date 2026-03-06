@@ -124,7 +124,6 @@ All notable changes to "Azure Toolkit for IntelliJ IDEA" will be documented in t
   - [3.0.6](#306)
 
 ## 3.97.3
-### Fixed
 - Rename GitHub Copilot app modernization to GitHub Copilot modernization.
 
 ## 3.97.2

@@ -28,7 +28,7 @@ import java.util.Set;
 public class AppModPluginInstaller {
     private static final String PLUGIN_ID = "com.github.copilot.appmod";
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
-    public static final String TO_INSTALL_APP_MODE_PLUGIN = " (Install Github Copilot modernization)";
+    public static final String TO_INSTALL_APP_MODE_PLUGIN = " (Install GitHub Copilot modernization)";
     private AppModPluginInstaller() {
         // Utility class - prevent instantiation
     }
@@ -97,9 +97,7 @@ public class AppModPluginInstaller {
         final String action = forUpgrade ? "upgrade" : "migration";
         log.debug("[AppModPluginInstaller] showInstallConfirmation - forUpgrade: {}, copilotInstalled: {}", forUpgrade, copilotInstalled);
 
-        final String title = copilotInstalled
-                ? "Install Github Copilot app modernization"
-                : "Install GitHub Copilot and app modernization";
+        final String title = "Install GitHub Copilot modernization";
 
         final String message;
         if (copilotInstalled) {

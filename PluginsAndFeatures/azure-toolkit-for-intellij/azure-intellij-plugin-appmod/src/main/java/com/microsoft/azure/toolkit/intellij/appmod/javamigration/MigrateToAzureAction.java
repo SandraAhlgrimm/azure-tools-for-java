@@ -154,7 +154,7 @@ public class MigrateToAzureAction extends ActionGroup {
         
         switch (migrationState.state) {
             case NOT_INSTALLED:
-                e.getPresentation().setText("Migrate to Azure (Install Github Copilot modernization)");
+                e.getPresentation().setText("Migrate to Azure (Install GitHub Copilot modernization)");
                 e.getPresentation().setPerformGroup(true);
                 e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, true);
                 break;

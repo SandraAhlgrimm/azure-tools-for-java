@@ -145,7 +145,7 @@ public class MigrateToAzureFacetNode extends AbstractAzureFacetNode<AzureModule>
         presentation.setIcon(IntelliJAzureIcons.getIcon(Constants.ICON_APPMOD_PATH));
         
         if (!AppModPluginInstaller.isAppModPluginInstalled()) {
-            final String text = "Migrate to Azure (Install Github Copilot modernization)";
+            final String text = "Migrate to Azure (Install GitHub Copilot modernization)";
             presentation.addText(text, com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES);
         } else if (isMigrationNodesLoaded() && !hasMigrationOptions()) {
             // Only show "Open..." if we've already loaded and found no options

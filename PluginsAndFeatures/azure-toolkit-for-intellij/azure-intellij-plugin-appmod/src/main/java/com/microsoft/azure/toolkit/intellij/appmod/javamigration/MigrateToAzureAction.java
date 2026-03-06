@@ -155,13 +155,13 @@ public class MigrateToAzureAction extends ActionGroup {
         
         switch (migrationState.state) {
             case NOT_INSTALLED:
-                e.getPresentation().setText("Migrate to Azure (Install " + Constants.APPMOND_NAME + ")");
+                e.getPresentation().setText("Migrate to Azure (Install " + Constants.APPMOD_NAME + ")");
                 e.getPresentation().setPerformGroup(true);
                 e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, true);
                 break;
             case LOADING:
             case NO_OPTIONS:
-                e.getPresentation().setText("Migrate to Azure (Open " + Constants.APPMOND_NAME + ")");
+                e.getPresentation().setText("Migrate to Azure (Open " + Constants.APPMOD_NAME + ")");
                 e.getPresentation().setPerformGroup(true);
                 e.getPresentation().putClientProperty(ActionUtil.SUPPRESS_SUBMENU, true);
                 break;

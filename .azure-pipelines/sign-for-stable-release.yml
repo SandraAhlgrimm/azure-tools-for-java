@@ -87,23 +87,23 @@ extends:
                 clean: true
                 fetchTags: false
               - task: PowerShell@2
-                displayName: Install JDK 17
+                displayName: Install JDK 21
                 inputs:
                   targetType: inline
                   script: |
-                    # Download Adoptium/Temurin JDK 17.0.12
-                    Write-Host "Downloading Java 17.0.12..."
-                    $source = "https://download.oracle.com/java/17/archive/jdk-17.0.12_windows-x64_bin.zip"
-                    $destination = "$(build.sourcesdirectory)\jdk17_x64_windows.zip"
+                    # Download Adoptium/Temurin JDK 21.0.8
+                    Write-Host "Downloading Java 21.0.8..."
+                    $source = "https://download.oracle.com/java/21/archive/jdk-21.0.2_windows-x64_bin.zip"
+                    $destination = "$(build.sourcesdirectory)\jdk21_x64_windows.zip"
                     Invoke-WebRequest -Uri $source -OutFile $destination
               - task: JavaToolInstaller@0
-                displayName: 'Use Java 17'
+                displayName: 'Use Java 21'
                 inputs:
-                  versionSpec: 17
+                  versionSpec: 21
                   jdkArchitectureOption: x64
                   jdkSourceOption: LocalDirectory
-                  jdkFile: '$(build.sourcesdirectory)\jdk17_x64_windows.zip'
-                  jdkDestinationDirectory: '$(agent.toolsDirectory)/jdk17'
+                  jdkFile: '$(build.sourcesdirectory)\jdk21_x64_windows.zip'
+                  jdkDestinationDirectory: '$(agent.toolsDirectory)/jdk21'
               - task: UseNode@1
                 inputs:
                   version: "22.x"

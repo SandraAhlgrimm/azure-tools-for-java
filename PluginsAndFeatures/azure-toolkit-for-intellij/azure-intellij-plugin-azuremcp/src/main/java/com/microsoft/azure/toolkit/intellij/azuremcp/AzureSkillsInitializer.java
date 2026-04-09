@@ -5,7 +5,10 @@
 
 package com.microsoft.azure.toolkit.intellij.azuremcp;
 
+import com.intellij.ide.plugins.IdeaPluginDescriptor;
+import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
@@ -45,6 +48,7 @@ import static com.microsoft.azure.toolkit.intellij.azuremcp.AzureMcpUtils.logTel
  */
 @Slf4j
 public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
+    private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
     private static final String[] NPX_ADD_ARGS = {
             "-y", "skills", "add",
             "https://github.com/microsoft/azure-skills/tree/main/.github/plugins/azure-skills/skills",
@@ -69,6 +73,12 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
         logTelemetryEvent("azure-skills-initialization-started");
         log.info("Running Azure Skills initializer");
         try {
+            if (!isCopilotPluginInstalled()) {
+                log.info("GitHub Copilot plugin is not installed, skipping Azure Skills initialization");
+                logTelemetryEvent("azure-skills-copilot-not-installed");
+                return null;
+            }
+
             final String npxPath = findNpxExecutable();
             if (npxPath == null) {
                 log.warn("npx is not installed or not found on PATH");
@@ -117,6 +127,14 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
             log.warn("Azure Skills npx update command failed");
             logTelemetryEvent("azure-skills-update-failed");
         }
+    }
+
+    /**
+     * Checks whether the GitHub Copilot plugin is installed and enabled.
+     */
+    private boolean isCopilotPluginInstalled() {
+        final IdeaPluginDescriptor copilotPlugin = PluginManagerCore.getPlugin(PluginId.getId(COPILOT_PLUGIN_ID));
+        return copilotPlugin != null && copilotPlugin.isEnabled();
     }
 
     /**

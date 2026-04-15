@@ -144,7 +144,7 @@ public class AzureMcpPackageManager {
             while ((zipEntry = zis.getNextEntry()) != null) {
                 final File outputFile = new File(destDir, zipEntry.getName());
                 // ensure the zip entry is within the destination directory
-                if (!outputFile.getCanonicalPath().startsWith(destDir.getCanonicalPath())) {
+                if (!outputFile.getCanonicalPath().startsWith(destDir.getCanonicalPath() + File.separator)) {
                     throw new IOException("Bad zip entry - " + zipEntry.getName());
                 }
                 if (zipEntry.isDirectory()) {

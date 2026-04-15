@@ -7,6 +7,12 @@ package com.microsoft.azure.toolkit.intellij.azuremcp;
 
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManagerCore;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.DumbAware;
@@ -14,6 +20,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.registry.Registry;
+import com.microsoft.azure.toolkit.intellij.common.settings.IntellijStore;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +56,10 @@ import static com.microsoft.azure.toolkit.intellij.azuremcp.AzureMcpUtils.logTel
 @Slf4j
 public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
     private static final String COPILOT_PLUGIN_ID = "com.github.copilot";
+    private static final String NOTIFICATION_GROUP_ID = "Azure Toolkit";
+    private static final String CONSENT_KEY = "azure-skills-install-consent";
+    private static final String CONSENT_ACCEPTED = "accepted";
+    private static final String CONSENT_DECLINED = "declined";
     private static final String[] NPX_ADD_ARGS = {
             "-y", "skills", "add",
             "https://github.com/microsoft/azure-skills/tree/main/.github/plugins/azure-skills/skills",
@@ -59,15 +70,23 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
     };
     private static final Duration UPDATE_INTERVAL = Duration.ofHours(24);
     private static final String TIMESTAMP_FILE_NAME = "azure-skills-last-update";
-
     // This timeout should account for time required to clone the repo and install all the skills.
     private static final long TIMEOUT_IN_MINUTES = 5;
 
     @Override
     public Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+        try {
+            initializeAzureSkills(null, project);
+        } catch (Exception e) {
+            log.error("Error initializing Azure Skills: " + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    private void initializeAzureSkills(final AnActionEvent event, final Project project) {
         if (Registry.is("azure.skills.autoconfigure.disabled", false)) {
             logTelemetryEvent("azure-skills-initialization-disabled");
-            return null;
+            return;
         }
 
         logTelemetryEvent("azure-skills-initialization-started");
@@ -76,29 +95,44 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
             if (!isCopilotPluginInstalled()) {
                 log.info("GitHub Copilot plugin is not installed, skipping Azure Skills initialization");
                 logTelemetryEvent("azure-skills-copilot-not-installed");
-                return null;
+                return;
+            }
+
+            if (!isCopilotSkillsEnabled()) {
+                log.info("Agent skills are not enabled in GitHub Copilot settings, skipping Azure Skills initialization");
+                logTelemetryEvent("azure-skills-copilot-skills-disabled");
+                return;
             }
 
             final String npxPath = findNpxExecutable();
             if (npxPath == null) {
                 log.warn("npx is not installed or not found on PATH");
                 logTelemetryEvent("azure-skills-npx-not-found");
-                return null;
+                return;
             }
 
             if (isSkillsInstalled()) {
-                updateSkills(npxPath);
+                updateSkills(npxPath, project);
             } else {
-                installAzureSkills(npxPath);
+                final String consent = getConsentState();
+                if (CONSENT_DECLINED.equals(consent)) {
+                    log.info("User previously declined Azure Skills installation, skipping");
+                    logTelemetryEvent("azure-skills-user-declined");
+                    return;
+                }
+                if (CONSENT_ACCEPTED.equals(consent)) {
+                    installAzureSkills(npxPath, project);
+                } else {
+                    promptForConsent(project, npxPath);
+                }
             }
         } catch (final Exception ex) {
             log.error("Error initializing Azure Skills: " + ex.getMessage(), ex);
             logErrorTelemetryEvent("azure-skills-initialization-failed", ex);
         }
-        return null;
     }
 
-    private void installAzureSkills(String npxPath) {
+    private void installAzureSkills(final String npxPath, final Project project) {
         log.info("Azure Skills not found, running fresh install");
         final boolean success = runNpxCommand(npxPath, NPX_ADD_ARGS);
         if (success) {
@@ -106,12 +140,12 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
             log.info("Azure Skills installed successfully.");
             logTelemetryEvent("azure-skills-install-success");
         } else {
-            log.warn("Azure Skills npx add command failed");
+            log.error("Azure Skills npx add command failed");
             logTelemetryEvent("azure-skills-install-failed");
         }
     }
 
-    private void updateSkills(String npxPath) {
+    private void updateSkills(final String npxPath, final Project project) {
         if (!isUpdateDue()) {
             log.info("Azure Skills is up to date, skipping update");
             return;
@@ -124,9 +158,56 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
             log.info("Azure Skills updated successfully.");
             logTelemetryEvent("azure-skills-update-success");
         } else {
-            log.warn("Azure Skills npx update command failed");
+            log.error("Azure Skills npx update command failed");
             logTelemetryEvent("azure-skills-update-failed");
         }
+    }
+
+    /**
+     * Shows a notification asking the user whether to install Azure Skills.
+     * The user's choice is persisted so they won't be asked again.
+     * The preference can be changed later under Settings → Tools → Azure.
+     */
+    private void promptForConsent(final Project project, final String npxPath) {
+        final Notification notification = new Notification(
+                NOTIFICATION_GROUP_ID,
+                "Install Azure Skills?",
+                "Azure Toolkit can install Azure Skills for GitHub Copilot to enhance your AI-assisted Azure development experience.",
+                NotificationType.INFORMATION);
+
+        notification.addAction(new NotificationAction("Install") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                notification.expire();
+                setConsentState(CONSENT_ACCEPTED);
+                logTelemetryEvent("azure-skills-user-accepted");
+                ApplicationManager.getApplication().executeOnPooledThread(() -> installAzureSkills(npxPath, project));
+            }
+        });
+
+        notification.addAction(new NotificationAction("Don\u2019t Install") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                notification.expire();
+                setConsentState(CONSENT_DECLINED);
+                logTelemetryEvent("azure-skills-user-declined");
+            }
+        });
+
+        Notifications.Bus.notify(notification, project);
+    }
+
+    private String getConsentState() {
+        return IntellijStore.getInstance().getProperty(null, CONSENT_KEY);
+    }
+
+    private void setConsentState(final String value) {
+        IntellijStore.getInstance().setProperty(null, CONSENT_KEY, value);
+    }
+
+    private void showNotification(final Project project, final String title, final String content) {
+        final Notification notification = new Notification(NOTIFICATION_GROUP_ID, title, content, NotificationType.INFORMATION);
+        Notifications.Bus.notify(notification, project);
     }
 
     /**
@@ -135,6 +216,36 @@ public class AzureSkillsInitializer implements ProjectActivity, DumbAware {
     private boolean isCopilotPluginInstalled() {
         final IdeaPluginDescriptor copilotPlugin = PluginManagerCore.getPlugin(PluginId.getId(COPILOT_PLUGIN_ID));
         return copilotPlugin != null && copilotPlugin.isEnabled();
+    }
+
+    /**
+     * Checks whether the "Agent Skills" option is enabled in GitHub Copilot settings
+     * (Settings → Tools → GitHub Copilot → Chat → {@code enableSkills}).
+     * <p>
+     * Uses reflection because the Copilot plugin is an optional runtime dependency.
+     * Returns {@code true} if the setting cannot be read (fail-open).
+     */
+    private boolean isCopilotSkillsEnabled() {
+        try {
+            final Class<?> settingsClass = Class.forName(
+                    "com.github.copilot.settings.CopilotApplicationSettings");
+            final Object settingsInstance = ApplicationManager.getApplication().getService(settingsClass);
+            if (settingsInstance == null) {
+                log.warn("CopilotApplicationSettings service not found, assuming skills enabled");
+                return true;
+            }
+            final Object state = settingsClass.getMethod("getState").invoke(settingsInstance);
+            if (state == null) {
+                log.warn("CopilotApplicationSettings state is null, assuming skills enabled");
+                return true;
+            }
+            final java.lang.reflect.Field enableSkillsField = state.getClass().getDeclaredField("enableSkills");
+            enableSkillsField.setAccessible(true);
+            return enableSkillsField.getBoolean(state);
+        } catch (final Exception ex) {
+            log.warn("Failed to read Copilot enableSkills setting, assuming skills enabled: " + ex.getMessage());
+            return true;
+        }
     }
 
     /**

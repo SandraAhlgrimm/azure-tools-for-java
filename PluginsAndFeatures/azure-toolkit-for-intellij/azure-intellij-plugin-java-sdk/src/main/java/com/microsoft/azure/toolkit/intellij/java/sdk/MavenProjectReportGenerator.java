@@ -9,6 +9,7 @@ import com.intellij.lang.StdLanguages;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManagerListener;
@@ -119,6 +120,8 @@ public final class MavenProjectReportGenerator implements ProjectActivity, DumbA
                     log.debug("Report for " + key + ": " + OBJECT_MAPPER.writeValueAsString(value));
                     sendReportToAppInsights(value);
                 }
+            } catch (final ProcessCanceledException e) {
+                throw e;
             } catch (final Exception e) {
                 log.error("Unable to send the Azure SDK report ", e);
             }

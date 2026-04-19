@@ -88,7 +88,9 @@ public final class MavenProjectReportGenerator implements ProjectActivity, DumbA
         ReadAction.nonBlocking(() -> {
             generateReport(project);
             return Unit.INSTANCE;
-        }).submit(scheduledExecutor);
+        }).inSmartMode(project)
+          .expireWhen(project::isDisposed)
+          .submit(scheduledExecutor);
 
         return null;
     }
